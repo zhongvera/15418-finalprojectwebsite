@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parallel Continuous Cellular Automata — 15-418 Project</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eef1f6;
+      --surface: #ffffff;
+      --border: #bdc8d8;
+      --accent: #0f3d9e;
+      --accent-dim: #dbeafe;
+      --text: #1e2d3d;
+      --text-dim: #6b7c90;
+      --text-bright: #060f1a;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'IBM Plex Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* ── DOT BACKGROUND ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle, #cddae8 1.2px, transparent 1.2px);
+      background-size: 28px 28px;
+      opacity: 0.45;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── CELLULAR AUTOMATA CANVAS ── */
+    #ca-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── LAYOUT ── */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 2rem 6rem;
+    }
+
+    /* ── HEADER ── */
+    header {
+      padding: 5rem 0 3rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 3rem;
+    }
+
+    .course-tag {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .course-tag::before {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 1px;
+      background: var(--accent);
+    }
+
+    h1 {
+      font-family: var(--mono);
+      font-size: clamp(1.4rem, 3.5vw, 2rem);
+      font-weight: 600;
+      color: var(--text-bright);
+      line-height: 1.25;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.01em;
+    }
+
+    .authors {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #6a7d92;
+      letter-spacing: 0.05em;
+    }
+    .authors span {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* ── NAV ── */
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 3rem;
+    }
+
+    nav a {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6a7d92;
+      text-decoration: none;
+      padding: 0.3rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    nav a:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    /* ── SECTIONS ── */
+    section {
+      margin-bottom: 3.5rem;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    section:nth-child(1) { animation-delay: 0.05s; }
+    section:nth-child(2) { animation-delay: 0.1s; }
+    section:nth-child(3) { animation-delay: 0.15s; }
+    section:nth-child(4) { animation-delay: 0.2s; }
+    section:nth-child(5) { animation-delay: 0.25s; }
+    section:nth-child(6) { animation-delay: 0.3s; }
+    section:nth-child(7) { animation-delay: 0.35s; }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.6rem;
+    }
+
+    h2 {
+      font-family: var(--mono);
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    p {
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    p:last-child { margin-bottom: 0; }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent-dim);
+      transition: border-color 0.2s;
+    }
+    a:hover { border-color: var(--accent); }
+
+    /* ── SUMMARY BOX ── */
+    .summary-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      padding: 1.2rem 1.4rem;
+      font-size: 0.9rem;
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* ── GOALS GRID ── */
+    .goals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 600px) { .goals-grid { grid-template-columns: 1fr; } }
+
+    .goal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1.2rem;
+      border-radius: 2px;
+    }
+    .goal-card .card-title {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 0.7rem;
+    }
+    .goal-card.mvp .card-title { color: var(--accent); }
+    .goal-card.stretch .card-title { color: #0f3d9e; }
+    .goal-card p { font-size: 0.85rem; }
+
+    /* ── SCHEDULE TABLE ── */
+    .schedule {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .schedule thead th {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: left;
+      padding: 0.5rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .schedule tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .schedule tbody tr:hover { background: var(--surface); }
+    .schedule td {
+      padding: 0.7rem 0.8rem;
+      vertical-align: top;
+    }
+    .schedule td:first-child {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--accent);
+      white-space: nowrap;
+      width: 160px;
+    }
+
+    /* ── WHITE CARD SECTIONS ── */
+    #summary, #background, #challenge, #resources, #goals, #platform, #schedule {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.8rem 2rem;
+      box-shadow: 0 2px 12px rgba(15, 61, 158, 0.06);
+    }
+
+    /* ── PLATFORM CHIPS ── */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 1rem;
+    }
+    .chip {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      padding: 0.25rem 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+    }
+
+    /* ── URL DISPLAY ── */
+    .url-placeholder {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      padding: 0.7rem 1rem;
+      color: var(--text-dim);
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .url-placeholder::before {
+      content: '//';
+      color: var(--accent);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 1.5rem;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: #6a7d92;
+      letter-spacing: 0.08em;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="ca-canvas"></canvas>
+
+<div class="wrapper">
+  <header>
+    <a href="index.html" style="display:inline-flex;align-items:center;gap:0.4rem;font-family:var(--mono);font-size:0.68rem;font-weight:500;letter-spacing:0.08em;color:#6a7d92;text-decoration:none;border:none;margin-bottom:1.5rem;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='#6a7d92'">← Back to Project Home</a>
+    <div class="course-tag">15-418/618 · Parallel Computer Architecture and Programming · Spring 2026</div>
+    <h1>Parallel Continuous Cellular Automata:<br>Performance Analysis of Multicore Implementations</h1>
+    <div class="authors">Team: <span>Tanishqa Puhan</span> &amp; <span>Vera Zhong</span></div>
+  </header>
+
+  <nav>
+    <a href="#summary">Summary</a>
+    <a href="#background">Background</a>
+    <a href="#challenge">Challenge</a>
+    <a href="#resources">Resources</a>
+    <a href="#goals">Goals</a>
+    <a href="#platform">Platform</a>
+    <a href="#schedule">Schedule</a>
+  </nav>
+
+  <!-- URL -->
+  <section id="url">
+    <div class="section-label">Project URL</div>
+    <h2>Web Page</h2>
+    <div class="url-placeholder"><a href="https://zhongvera.github.io/15418-finalprojectwebsite/" target="_blank">https://zhongvera.github.io/15418-finalprojectwebsite/</a></div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section id="summary">
+    <div class="section-label">Overview</div>
+    <h2>Summary</h2>
+    <div class="summary-box">
+      We plan on implementing and optimizing a continuous cellular automaton inspired by Conway's Game of Life, where each cell evolves according to a function computed using its neighbors' values. We will develop multiple parallel implementations and analyze how memory locality, computation intensity, and parallelization strategy affect performance. Our goal is to understand scalability limits and bottlenecks in stencil-style computations on multicore CPUs.
+    </div>
+  </section>
+
+  <!-- BACKGROUND -->
+  <section id="background">
+    <div class="section-label">Context</div>
+    <h2>Background</h2>
+    <p>
+      Conway's Game of Life is a discrete cellular automaton where binary-valued cells evolve based on simple rules applied to their neighbors. Continuous generalizations like
+      <a href="https://arxiv.org/abs/1111.1567" target="_blank">SmoothLife</a> and
+      <a href="https://direct.mit.edu/isal/proceedings/isal2025/37/21/134046?guestAccessKey=" target="_blank">related work</a>
+      extend this by allowing cells to take on real-valued states (typically between 0 and 1), updated by a function over neighboring values. These models tend to produce richer, more stable, and more physically plausible dynamics.
+    </p>
+    <p>
+      In this project, we implement a continuous automaton on a 2D grid where each cell is updated based on a weighted aggregation of neighboring values combined with a nonlinear update function. This is similar to stencil operations in scientific computing and image processing. Unlike standard Game of Life, the continuous version introduces parameters like neighborhood radius and mathematical complexity, making it a meaningful workload for studying parallel performance.
+    </p>
+  </section>
+
+  <!-- CHALLENGE -->
+  <section id="challenge">
+    <div class="section-label">Problem Statement</div>
+    <h2>The Challenge</h2>
+    <p>
+      Although the computation is data-parallel, achieving high performance is nontrivial due to memory and locality constraints. Each cell update requires accessing neighboring values, leading to frequent memory accesses and potential cache inefficiencies. As the neighborhood radius grows, the working set grows and memory bandwidth may become the dominant bottleneck.
+    </p>
+    <p>
+      Different parallelization strategies can affect cache reuse and scaling behavior differently. While synchronization overhead is relatively low, speedup may be limited at higher thread counts due to memory bandwidth saturation and poor spatial locality. A further challenge is balancing computation and memory access: increasing computational complexity may improve arithmetic intensity but also changes the performance profile in nonobvious ways.
+    </p>
+  </section>
+
+  <!-- RESOURCES -->
+  <section id="resources">
+    <div class="section-label">Infrastructure</div>
+    <h2>Resources</h2>
+    <p>
+      We will use multicore CPU systems available through the <strong>GHC clusters</strong> and <strong>Bridges-2</strong>. The project will be implemented in C/C++ using <strong>OpenMP</strong> for thread-level parallelization, and potentially <strong>ISPC</strong> for SIMD optimization as a stretch goal. We are starting from scratch for the implementation, using the <a href="https://arxiv.org/abs/1111.1567" target="_blank">SmoothLife paper</a> and related work as references for the continuous update rules. Standard clock-based timing tools will be used for benchmarking and bottleneck analysis.
+    </p>
+    <div class="chips">
+      <span class="chip">C / C++</span>
+      <span class="chip">OpenMP</span>
+      <span class="chip">ISPC (stretch)</span>
+      <span class="chip">GHC Clusters</span>
+      <span class="chip">Bridges-2</span>
+    </div>
+  </section>
+
+  <!-- GOALS -->
+  <section id="goals">
+    <div class="section-label">Deliverables</div>
+    <h2>Goals &amp; Deliverables</h2>
+    <div class="goals-grid">
+      <div class="goal-card mvp">
+        <div class="card-title">Plan to Achieve (MVP)</div>
+        <p>Implement a correct serial version and at least two parallel OpenMP versions. Evaluate performance across different grid sizes and thread counts, and produce graphs showing runtime and speedup. Analyze how neighborhood radius affects performance and identify bottlenecks like memory bandwidth and cache behavior. Deliverables include working code, performance graphs, and a written analysis.</p>
+      </div>
+      <div class="goal-card stretch">
+        <div class="card-title">Hope to Achieve (Stretch)</div>
+        <p>Implement a SIMD-optimized version using ISPC or vector intrinsics. Experiment with different nonlinear update functions or larger neighborhoods to study how arithmetic intensity affects scalability. If the project goes well, compare CPU performance against a GPU baseline.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLATFORM -->
+  <section id="platform">
+    <div class="section-label">Rationale</div>
+    <h2>Platform Choice</h2>
+    <p>
+      We chose multicore CPUs with OpenMP because the workload is naturally data-parallel and maps well to thread-based parallelism. OpenMP allows us to quickly implement and compare different decomposition strategies — such as row-parallel and tiled layouts — while maintaining fine-grained control over scheduling and thread behavior.
+    </p>
+    <p>
+      CPUs are also well-suited for studying cache locality and memory bandwidth effects, which are central to our research questions. The GHC cluster machines give us access to a consistent, well-characterized hardware environment with enough cores to observe meaningful scaling behavior.
+    </p>
+  </section>
+
+  <!-- SCHEDULE -->
+  <section id="schedule">
+    <div class="section-label">Timeline</div>
+    <h2>Schedule</h2>
+    <table class="schedule">
+      <thead>
+        <tr>
+          <th>Week</th>
+          <th>Goals</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Mar 25 – Mar 31</td>
+          <td>Define update rule and data structures. Implement serial baseline and verify correctness. Set up benchmarking framework and produce initial speedup report to assess whether the problem exhibits meaningful performance challenges.</td>
+        </tr>
+        <tr>
+          <td>Apr 1 – Apr 8</td>
+          <td>Implement OpenMP row-parallel version. Test correctness and measure speedup against serial baseline. Begin identifying scaling behavior and preliminary bottlenecks.</td>
+        </tr>
+        <tr>
+          <td>Apr 9 – Apr 17</td>
+          <td>Implement tiled/cache-aware version. Compare against row-parallel implementation and analyze the impact of locality on performance. Begin structured data collection.</td>
+        </tr>
+        <tr>
+          <td>Apr 18 – Apr 24</td>
+          <td>Run full experiments varying grid size, thread count, and neighborhood radius. Generate performance graphs and analyze bottlenecks (memory bandwidth, cache behavior).</td>
+        </tr>
+        <tr>
+          <td>Apr 25 – Apr 29</td>
+          <td>Implement SIMD optimization (ISPC or vector intrinsics). Evaluate performance improvements and compare against previous implementations.</td>
+        </tr>
+        <tr>
+          <td>Apr 30</td>
+          <td>Finalize analysis, complete report, and prepare poster materials.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>
+    <span>15-418/618 · Spring 2026 · Carnegie Mellon University</span>
+    <span>Tanishqa Puhan &amp; Vera Zhong</span>
+  </footer>
+</div>
+
+<script>
+  // ── CELLULAR AUTOMATA BACKGROUND ANIMATION ──
+  const canvas = document.getElementById('ca-canvas');
+  const ctx = canvas.getContext('2d');
+  const CELL = 8;
+  let cols, rows, grid, next;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    cols = Math.ceil(canvas.width / CELL);
+    rows = Math.ceil(canvas.height / CELL);
+    grid = new Float32Array(cols * rows);
+    next = new Float32Array(cols * rows);
+    for (let i = 0; i < grid.length; i++) grid[i] = Math.random() < 0.3 ? Math.random() : 0;
+  }
+
+  function idx(x, y) {
+    return ((y + rows) % rows) * cols + ((x + cols) % cols);
+  }
+
+  // SmoothLife-inspired continuous update
+  function step() {
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        let inner = 0, outer = 0, ni = 0, no = 0;
+        for (let dy = -3; dy <= 3; dy++) {
+          for (let dx = -3; dx <= 3; dx++) {
+            const d = dx * dx + dy * dy;
+            const v = grid[idx(x + dx, y + dy)];
+            if (d <= 4) { inner += v; ni++; }
+            else if (d <= 9) { outer += v; no++; }
+          }
+        }
+        inner /= ni; outer /= no;
+        const s = 1 / (1 + Math.exp(-(inner - 0.5) * 12));
+        const birth  = outer > 0.26 && outer < 0.46;
+        const survive = inner > 0.26 && inner < 0.46;
+        const target = birth || survive ? 1 : 0;
+        next[idx(x, y)] = grid[idx(x, y)] + 0.12 * (target - grid[idx(x, y)]);
+      }
+    }
+    [grid, next] = [next, grid];
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const v = grid[idx(x, y)];
+        if (v > 0.05) {
+          const alpha = v * 0.9;
+          ctx.fillStyle = `rgba(26, 86, 219, ${alpha})`;
+          ctx.fillRect(x * CELL, y * CELL, CELL - 1, CELL - 1);
+        }
+      }
+    }
+  }
+
+  let frame = 0;
+  function loop() {
+    if (frame % 2 === 0) step();
+    draw();
+    frame++;
+    requestAnimationFrame(loop);
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  loop();
+</script>
+</body>
+</html>
