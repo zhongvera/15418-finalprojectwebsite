@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Parallel Continuous Cellular Automata — 15-418 Project</title>
+  <title>Proposal — Parallel Betweenness Centrality — 15-418 Project</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -44,12 +44,12 @@
       z-index: 0;
     }
 
-    /* ── CELLULAR AUTOMATA CANVAS ── */
-    #ca-canvas {
+    /* ── PPI NETWORK CANVAS ── */
+    #ppi-canvas {
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      opacity: 0.12;
+      opacity: 0.18;
       pointer-events: none;
       z-index: 0;
     }
@@ -324,13 +324,13 @@
 </head>
 <body>
 
-<canvas id="ca-canvas"></canvas>
+<canvas id="ppi-canvas"></canvas>
 
 <div class="wrapper">
   <header>
     <a href="index.html" style="display:inline-flex;align-items:center;gap:0.4rem;font-family:var(--mono);font-size:0.68rem;font-weight:500;letter-spacing:0.08em;color:#6a7d92;text-decoration:none;border:none;margin-bottom:1.5rem;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='#6a7d92'">← Back to Project Home</a>
     <div class="course-tag">15-418/618 · Parallel Computer Architecture and Programming · Spring 2026</div>
-    <h1>Parallel Continuous Cellular Automata:<br>Performance Analysis of Multicore Implementations</h1>
+    <h1>Parallel Betweenness Centrality on<br>Protein-Protein Interaction Networks</h1>
     <div class="authors">Team: <span>Tanishqa Puhan</span> &amp; <span>Vera Zhong</span></div>
   </header>
 
@@ -356,7 +356,7 @@
     <div class="section-label">Overview</div>
     <h2>Summary</h2>
     <div class="summary-box">
-      We plan on implementing and optimizing a continuous cellular automaton inspired by Conway's Game of Life, where each cell evolves according to a function computed using its neighbors' values. We will develop multiple parallel implementations and analyze how memory locality, computation intensity, and parallelization strategy affect performance. Our goal is to understand scalability limits and bottlenecks in stencil-style computations on multicore CPUs.
+      We plan on implementing and optimizing parallel betweenness centrality computation on protein-protein interaction (PPI) graphs. We will develop multiple parallel implementations and analyze how load balancing, memory locality, and synchronization strategy affect performance. Our goal is to understand scalability limits and bottlenecks when running graph algorithms on irregular, real-world biological networks.
     </div>
   </section>
 
@@ -365,13 +365,10 @@
     <div class="section-label">Context</div>
     <h2>Background</h2>
     <p>
-      Conway's Game of Life is a discrete cellular automaton where binary-valued cells evolve based on simple rules applied to their neighbors. Continuous generalizations like
-      <a href="https://arxiv.org/abs/1111.1567" target="_blank">SmoothLife</a> and
-      <a href="https://direct.mit.edu/isal/proceedings/isal2025/37/21/134046?guestAccessKey=" target="_blank">related work</a>
-      extend this by allowing cells to take on real-valued states (typically between 0 and 1), updated by a function over neighboring values. These models tend to produce richer, more stable, and more physically plausible dynamics.
+      Betweenness centrality is a graph metric that measures how often a vertex lies on the shortest path between pairs of other vertices. It is widely used in network analysis to identify important nodes — in the context of protein-protein interaction networks, high-centrality proteins often correspond to biologically significant molecules critical to cellular function or disease pathways.
     </p>
     <p>
-      In this project, we implement a continuous automaton on a 2D grid where each cell is updated based on a weighted aggregation of neighboring values combined with a nonlinear update function. This is similar to stencil operations in scientific computing and image processing. Unlike standard Game of Life, the continuous version introduces parameters like neighborhood radius and mathematical complexity, making it a meaningful workload for studying parallel performance.
+      The standard algorithm for computing betweenness centrality is Brandes' algorithm, which runs a BFS (or Dijkstra's for weighted graphs) from every vertex in the graph and accumulates dependency scores along the resulting shortest-path DAGs. In this project, we will implement Brandes' algorithm on PPI graphs sourced from public databases like <a href="https://thebiogrid.org/" target="_blank">BioGRID</a> or <a href="https://string-db.org/" target="_blank">STRING</a>. Each BFS traversal produces partial centrality contributions that must be aggregated across all source vertices, making the computation a natural target for parallelization. Unlike regular stencil-style workloads, graph algorithms on biological networks introduce irregular access patterns and skewed degree distributions, allowing us to explore a richer design space for studying parallel performance.
     </p>
   </section>
 
@@ -380,10 +377,10 @@
     <div class="section-label">Problem Statement</div>
     <h2>The Challenge</h2>
     <p>
-      Although the computation is data-parallel, achieving high performance is nontrivial due to memory and locality constraints. Each cell update requires accessing neighboring values, leading to frequent memory accesses and potential cache inefficiencies. As the neighborhood radius grows, the working set grows and memory bandwidth may become the dominant bottleneck.
+      Although betweenness centrality is conceptually parallel across source vertices, achieving high performance is nontrivial due to the irregular structure of PPI graphs. Real biological networks tend to follow power-law degree distributions, meaning a small number of hub proteins have far more connections than most other nodes. This creates significant load imbalance when naively distributing BFS sources across threads.
     </p>
     <p>
-      Different parallelization strategies can affect cache reuse and scaling behavior differently. While synchronization overhead is relatively low, speedup may be limited at higher thread counts due to memory bandwidth saturation and poor spatial locality. A further challenge is balancing computation and memory access: increasing computational complexity may improve arithmetic intensity but also changes the performance profile in nonobvious ways.
+      Memory locality is also a challenge because graph traversal produces unpredictable access patterns that interact poorly with caches. Additionally, accumulating dependency scores into shared centrality arrays requires synchronization or per-thread accumulators, both of which introduce overhead. The primary challenge is choosing the right parallel granularity: parallelizing across source vertices is coarse-grained and simple, but high-degree hub vertices create severe load imbalance. Parallelizing within a single BFS offers finer granularity but requires synchronization at each BFS level and introduces frontier management overhead. Finding the right hybrid approach is the core challenge and goal.
     </p>
   </section>
 
@@ -392,14 +389,15 @@
     <div class="section-label">Infrastructure</div>
     <h2>Resources</h2>
     <p>
-      We will use multicore CPU systems available through the <strong>GHC clusters</strong> and <strong>Bridges-2</strong>. The project will be implemented in C/C++ using <strong>OpenMP</strong> for thread-level parallelization, and potentially <strong>ISPC</strong> for SIMD optimization as a stretch goal. We are starting from scratch for the implementation, using the <a href="https://arxiv.org/abs/1111.1567" target="_blank">SmoothLife paper</a> and related work as references for the continuous update rules. Standard clock-based timing tools will be used for benchmarking and bottleneck analysis.
+      We will use multicore CPU systems available through the <strong>GHC clusters</strong> and <strong>Bridges-2</strong>. The project will be implemented in C/C++ using <strong>OpenMP</strong> for parallelization, and we may explore lock-free or atomic-based accumulation strategies as a stretch goal. We are starting from scratch, using the original Brandes paper and follow-up work on parallel betweenness (such as Madduri et al.) as references. Our primary dataset will be the human PPI network from <a href="https://thebiogrid.org/" target="_blank">BioGRID</a> (~20k proteins, ~400k interactions), with potential testing on the larger STRING database or smaller organism-specific networks (e.g., yeast).
     </p>
     <div class="chips">
       <span class="chip">C / C++</span>
       <span class="chip">OpenMP</span>
-      <span class="chip">ISPC (stretch)</span>
       <span class="chip">GHC Clusters</span>
       <span class="chip">Bridges-2</span>
+      <span class="chip">BioGRID</span>
+      <span class="chip">STRING</span>
     </div>
   </section>
 
@@ -410,11 +408,11 @@
     <div class="goals-grid">
       <div class="goal-card mvp">
         <div class="card-title">Plan to Achieve (MVP)</div>
-        <p>Implement a correct serial version and at least two parallel OpenMP versions. Evaluate performance across different grid sizes and thread counts, and produce graphs showing runtime and speedup. Analyze how neighborhood radius affects performance and identify bottlenecks like memory bandwidth and cache behavior. Deliverables include working code, performance graphs, and a written analysis.</p>
+        <p>Implement a correct serial Brandes' algorithm and at least two parallel OpenMP versions: (1) static source-parallel, (2) dynamically-scheduled source-parallel to mitigate hub-induced imbalance, and (3) a hybrid version parallelizing within individual BFS traversals for high-degree vertices. Evaluate across graph sizes and thread counts, produce speedup graphs, and analyze bottlenecks including load imbalance, contention, and cache behavior.</p>
       </div>
       <div class="goal-card stretch">
         <div class="card-title">Hope to Achieve (Stretch)</div>
-        <p>Implement a SIMD-optimized version using ISPC or vector intrinsics. Experiment with different nonlinear update functions or larger neighborhoods to study how arithmetic intensity affects scalability. If the project goes well, compare CPU performance against a GPU baseline.</p>
+        <p>Implement a basic CUDA version to compare GPU performance on irregular graph traversal against our CPU implementations. Explore graph reordering techniques (e.g., reverse Cuthill-McKee) to improve cache locality, and experiment with fine-grained BFS parallelism or lock-free accumulation of dependency scores.</p>
       </div>
     </div>
   </section>
@@ -424,10 +422,10 @@
     <div class="section-label">Rationale</div>
     <h2>Platform Choice</h2>
     <p>
-      We chose multicore CPUs with OpenMP because the workload is naturally data-parallel and maps well to thread-based parallelism. OpenMP allows us to quickly implement and compare different decomposition strategies — such as row-parallel and tiled layouts — while maintaining fine-grained control over scheduling and thread behavior.
+      We chose multicore CPUs with OpenMP because Brandes' algorithm exposes coarse-grained parallelism across source vertices that maps well to thread-based parallelism. OpenMP allows us to quickly implement and compare different scheduling and decomposition strategies while maintaining control over thread behavior.
     </p>
     <p>
-      CPUs are also well-suited for studying cache locality and memory bandwidth effects, which are central to our research questions. The GHC cluster machines give us access to a consistent, well-characterized hardware environment with enough cores to observe meaningful scaling behavior.
+      CPUs are also well-suited for studying irregular memory access patterns and load imbalance effects, which are central to this project. The GHC cluster machines give us access to a consistent, well-characterized hardware environment with enough cores to observe meaningful scaling behavior across our biological network datasets.
     </p>
   </section>
 
@@ -444,24 +442,24 @@
       </thead>
       <tbody>
         <tr>
-          <td>Mar 25 – Mar 31</td>
-          <td>Define update rule and data structures. Implement serial baseline and verify correctness. Set up benchmarking framework and produce initial speedup report to assess whether the problem exhibits meaningful performance challenges.</td>
+          <td>Apr 8 – Apr 14</td>
+          <td>Set up PPI dataset loading and graph data structures. Implement serial Brandes' algorithm and verify correctness against reference implementations on small graphs. Set up benchmarking framework and produce an initial profiling report to evaluate workload characteristics.</td>
         </tr>
         <tr>
-          <td>Apr 1 – Apr 8</td>
-          <td>Implement OpenMP row-parallel version. Test correctness and measure speedup against serial baseline. Begin identifying scaling behavior and preliminary bottlenecks.</td>
+          <td>Apr 15 – Apr 21</td>
+          <td>Implement OpenMP source-parallel version with static scheduling. Test correctness and measure speedup against serial baseline. Begin identifying scaling behavior and load imbalance from high-degree hub vertices.</td>
         </tr>
         <tr>
-          <td>Apr 9 – Apr 17</td>
-          <td>Implement tiled/cache-aware version. Compare against row-parallel implementation and analyze the impact of locality on performance. Begin structured data collection.</td>
+          <td>Apr 22 – Apr 25</td>
+          <td>Implement dynamic or guided scheduling and a load-balanced variant. Compare against static source-parallel implementation and analyze the impact of load balancing on performance. Begin structured data collection for experiments.</td>
         </tr>
         <tr>
-          <td>Apr 18 – Apr 24</td>
-          <td>Run full experiments varying grid size, thread count, and neighborhood radius. Generate performance graphs and analyze bottlenecks (memory bandwidth, cache behavior).</td>
+          <td>Apr 26 – Apr 28</td>
+          <td>Run full experiments varying graph size, thread count, and dataset. Generate performance graphs and analyze bottlenecks such as load imbalance, contention, and cache behavior.</td>
         </tr>
         <tr>
-          <td>Apr 25 – Apr 29</td>
-          <td>Implement SIMD optimization (ISPC or vector intrinsics). Evaluate performance improvements and compare against previous implementations.</td>
+          <td>Apr 29 – Apr 30</td>
+          <td>Implement stretch goal optimizations if possible — fine-grained BFS parallelism or lock-free accumulation. Evaluate performance improvements and compare against previous implementations.</td>
         </tr>
         <tr>
           <td>Apr 30</td>
@@ -478,75 +476,163 @@
 </div>
 
 <script>
-  // ── CELLULAR AUTOMATA BACKGROUND ANIMATION ──
-  const canvas = document.getElementById('ca-canvas');
+  const canvas = document.getElementById('ppi-canvas');
   const ctx = canvas.getContext('2d');
-  const CELL = 8;
-  let cols, rows, grid, next;
 
-  function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    cols = Math.ceil(canvas.width / CELL);
-    rows = Math.ceil(canvas.height / CELL);
-    grid = new Float32Array(cols * rows);
-    next = new Float32Array(cols * rows);
-    for (let i = 0; i < grid.length; i++) grid[i] = Math.random() < 0.3 ? Math.random() : 0;
-  }
+  function buildAndDraw() {
+    const W = canvas.width = window.innerWidth;
+    const H = canvas.height = window.innerHeight;
+    const cx = W / 2, cy = H / 2;
 
-  function idx(x, y) {
-    return ((y + rows) % rows) * cols + ((x + cols) % cols);
-  }
+    // --- Gaussian helper ---
+    function gauss() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+    }
 
-  // SmoothLife-inspired continuous update
-  function step() {
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        let inner = 0, outer = 0, ni = 0, no = 0;
-        for (let dy = -3; dy <= 3; dy++) {
-          for (let dx = -3; dx <= 3; dx++) {
-            const d = dx * dx + dy * dy;
-            const v = grid[idx(x + dx, y + dy)];
-            if (d <= 4) { inner += v; ni++; }
-            else if (d <= 9) { outer += v; no++; }
-          }
+    const nodes = [];
+    const edges = [];
+    const adjSet = new Set();
+
+    function addEdge(a, b) {
+      if (a === b) return;
+      const key = Math.min(a,b) + ',' + Math.max(a,b);
+      if (adjSet.has(key)) return;
+      adjSet.add(key); edges.push([a, b]);
+      nodes[a].degree++; nodes[b].degree++;
+    }
+
+    // --- 1. Dense central blob (Gaussian positions) ---
+    const clusterR = Math.min(W, H) * 0.16;
+    const blobN = 160;
+    for (let i = 0; i < blobN; i++) {
+      nodes.push({ x: cx + gauss() * clusterR, y: cy + gauss() * clusterR * 0.9, degree: 0 });
+    }
+
+    // Connect blob nodes by preferential attachment biased toward closeness
+    for (let i = 1; i < blobN; i++) {
+      // Connect to closest high-degree node
+      let best = -1, bestScore = Infinity;
+      for (let j = 0; j < i; j++) {
+        const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const score = dist / (nodes[j].degree + 1);
+        if (score < bestScore) { bestScore = score; best = j; }
+      }
+      addEdge(i, best);
+      // Extra cross-links for density
+      for (let k = 0; k < 3; k++) {
+        if (Math.random() < 0.5) {
+          const j = Math.floor(Math.random() * i);
+          const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+          if (Math.sqrt(dx*dx+dy*dy) < clusterR * 1.2) addEdge(i, j);
         }
-        inner /= ni; outer /= no;
-        const s = 1 / (1 + Math.exp(-(inner - 0.5) * 12));
-        const birth  = outer > 0.26 && outer < 0.46;
-        const survive = inner > 0.26 && inner < 0.46;
-        const target = birth || survive ? 1 : 0;
-        next[idx(x, y)] = grid[idx(x, y)] + 0.12 * (target - grid[idx(x, y)]);
       }
     }
-    [grid, next] = [next, grid];
-  }
 
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        const v = grid[idx(x, y)];
-        if (v > 0.05) {
-          const alpha = v * 0.9;
-          ctx.fillStyle = `rgba(26, 86, 219, ${alpha})`;
-          ctx.fillRect(x * CELL, y * CELL, CELL - 1, CELL - 1);
+    // --- 2. Tendrils / arms extending from high-degree hub nodes ---
+    const hubs = [...nodes]
+      .map((n, i) => ({i, deg: n.degree}))
+      .sort((a,b) => b.deg - a.deg)
+      .slice(0, 12);
+
+    for (const hub of hubs) {
+      const numArms = 1 + Math.floor(Math.random() * 2);
+      for (let arm = 0; arm < numArms; arm++) {
+        const angle = Math.random() * Math.PI * 2;
+        const armLen = 4 + Math.floor(Math.random() * 8);
+        let prevIdx = hub.i;
+        let px = nodes[hub.i].x, py = nodes[hub.i].y;
+        for (let k = 0; k < armLen; k++) {
+          const jitter = (Math.random() - 0.5) * 0.5;
+          const step = 18 + Math.random() * 10;
+          px += Math.cos(angle + jitter) * step;
+          py += Math.sin(angle + jitter) * step;
+          // Don't go out of bounds
+          if (px < 30 || px > W-30 || py < 30 || py > H-30) break;
+          const idx = nodes.length;
+          nodes.push({ x: px, y: py, degree: 0 });
+          addEdge(prevIdx, idx);
+          prevIdx = idx;
         }
       }
     }
+
+    // --- 3. Small isolated satellite components around periphery ---
+    const margin = Math.min(W, H) * 0.08;
+    const perimeterSlots = [
+      // top row
+      ...Array.from({length:6}, (_,i) => [W*0.08 + i*(W*0.16), H*0.06]),
+      // bottom row
+      ...Array.from({length:6}, (_,i) => [W*0.08 + i*(W*0.16), H*0.92]),
+      // left col
+      ...Array.from({length:4}, (_,i) => [W*0.04, H*0.15 + i*(H*0.22)]),
+      // right col
+      ...Array.from({length:4}, (_,i) => [W*0.94, H*0.15 + i*(H*0.22)]),
+    ];
+
+    for (const [ox, oy] of perimeterSlots) {
+      // Skip if too close to center cluster
+      const dx = ox - cx, dy = oy - cy;
+      if (Math.sqrt(dx*dx+dy*dy) < clusterR * 1.8) continue;
+
+      const type = Math.random();
+      const startIdx = nodes.length;
+      if (type < 0.45) {
+        // Chain
+        const len = 2 + Math.floor(Math.random() * 5);
+        const ang = Math.random() * Math.PI * 2;
+        for (let k = 0; k < len; k++) {
+          nodes.push({ x: ox + Math.cos(ang)*k*12 + (Math.random()-0.5)*4, y: oy + Math.sin(ang)*k*12 + (Math.random()-0.5)*4, degree: 0 });
+          if (k > 0) addEdge(startIdx+k-1, startIdx+k);
+        }
+      } else if (type < 0.75) {
+        // Small star
+        const spokes = 2 + Math.floor(Math.random() * 4);
+        nodes.push({ x: ox, y: oy, degree: 0 });
+        for (let k = 0; k < spokes; k++) {
+          const a = (k/spokes)*Math.PI*2;
+          nodes.push({ x: ox+Math.cos(a)*13, y: oy+Math.sin(a)*13, degree: 0 });
+          addEdge(startIdx, startIdx+k+1);
+        }
+      } else {
+        // Pair
+        nodes.push({ x: ox, y: oy, degree: 0 });
+        nodes.push({ x: ox+10, y: oy+(Math.random()-0.5)*6, degree: 0 });
+        addEdge(startIdx, startIdx+1);
+      }
+    }
+
+    // Node sizes by degree
+    const maxDeg = Math.max(...nodes.map(n => n.degree), 1);
+    for (const n of nodes) n.r = 1.3 + (n.degree / maxDeg) * 5.5;
+
+    // --- Draw ---
+    ctx.clearRect(0, 0, W, H);
+
+    for (const [ai, bi] of edges) {
+      const a = nodes[ai], b = nodes[bi];
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = 'rgba(15,61,158,0.32)'; ctx.lineWidth = 0.8; ctx.stroke();
+    }
+
+    for (const n of nodes) {
+      const isHub = n.degree >= 8, isMed = n.degree >= 3;
+      if (isHub) {
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r+2.5, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(15,61,158,0.18)'; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+      ctx.fillStyle = isHub ? 'rgba(15,61,158,0.82)' : isMed ? 'rgba(15,61,158,0.62)' : 'rgba(15,61,158,0.42)';
+      ctx.fill();
+      if (isHub) { ctx.strokeStyle='rgba(15,61,158,0.95)'; ctx.lineWidth=0.8; ctx.stroke(); }
+    }
   }
 
-  let frame = 0;
-  function loop() {
-    if (frame % 2 === 0) step();
-    draw();
-    frame++;
-    requestAnimationFrame(loop);
-  }
-
-  resize();
-  window.addEventListener('resize', resize);
-  loop();
+  buildAndDraw();
+  window.addEventListener('resize', buildAndDraw);
 </script>
 </body>
 </html>
