@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milestone — Parallel Betweenness Centrality — 15-418 Project</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eef1f6;
+      --surface: #ffffff;
+      --border: #bdc8d8;
+      --accent: #0f3d9e;
+      --accent-dim: #dbeafe;
+      --text: #1e2d3d;
+      --text-dim: #6b7c90;
+      --text-bright: #060f1a;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'IBM Plex Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle, #cddae8 1.2px, transparent 1.2px);
+      background-size: 28px 28px;
+      opacity: 0.45;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #ppi-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      opacity: 0.18;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 2rem 6rem;
+    }
+
+    header {
+      padding: 5rem 0 3rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 3rem;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: #6a7d92;
+      text-decoration: none;
+      border: none;
+      margin-bottom: 1.5rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--accent); }
+
+    .course-tag {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .course-tag::before {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 1px;
+      background: var(--accent);
+    }
+
+    h1 {
+      font-family: var(--mono);
+      font-size: clamp(1.4rem, 3.5vw, 2rem);
+      font-weight: 600;
+      color: var(--text-bright);
+      line-height: 1.25;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.01em;
+    }
+
+    .authors {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #6a7d92;
+      letter-spacing: 0.05em;
+    }
+    .authors span {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 3rem;
+    }
+
+    nav a {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6a7d92;
+      text-decoration: none;
+      padding: 0.3rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    nav a:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    section {
+      margin-bottom: 3.5rem;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    section:nth-child(1) { animation-delay: 0.05s; }
+    section:nth-child(2) { animation-delay: 0.1s; }
+    section:nth-child(3) { animation-delay: 0.15s; }
+    section:nth-child(4) { animation-delay: 0.2s; }
+    section:nth-child(5) { animation-delay: 0.25s; }
+    section:nth-child(6) { animation-delay: 0.3s; }
+    section:nth-child(7) { animation-delay: 0.35s; }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.6rem;
+    }
+
+    h2 {
+      font-family: var(--mono);
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin: 1.4rem 0 0.6rem;
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    p:last-child { margin-bottom: 0; }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent-dim);
+      transition: border-color 0.2s;
+    }
+    a:hover { border-color: var(--accent); }
+
+    .summary-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      padding: 1.2rem 1.4rem;
+      font-size: 0.9rem;
+      border-radius: 0 2px 2px 0;
+    }
+
+    .goals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 600px) { .goals-grid { grid-template-columns: 1fr; } }
+
+    .goal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1.2rem;
+      border-radius: 2px;
+    }
+    .goal-card .card-title {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 0.7rem;
+      color: var(--accent);
+    }
+    .goal-card p { font-size: 0.85rem; }
+
+    .schedule {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .schedule thead th {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: left;
+      padding: 0.5rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .schedule tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .schedule tbody tr:hover { background: var(--surface); }
+    .schedule td {
+      padding: 0.7rem 0.8rem;
+      vertical-align: top;
+    }
+    .schedule td:first-child {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--accent);
+      white-space: nowrap;
+      width: 160px;
+    }
+
+    #summary, #completed, #progress, #poster-goals, #poster-plan, #preliminary, #issues, #schedule {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.8rem 2rem;
+      box-shadow: 0 2px 12px rgba(15, 61, 158, 0.06);
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.8rem;
+      margin: 1rem 0 0.5rem;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.9rem 1rem;
+      border-radius: 2px;
+    }
+    .stat-num {
+      font-family: var(--mono);
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--accent);
+      line-height: 1.1;
+    }
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-top: 0.3rem;
+    }
+
+    ul.bullets {
+      list-style: none;
+      padding: 0;
+      margin: 0.6rem 0 0;
+    }
+    ul.bullets li {
+      font-size: 0.88rem;
+      padding: 0.35rem 0 0.35rem 1.3rem;
+      position: relative;
+    }
+    ul.bullets li::before {
+      content: '▸';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 1.5rem;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: #6a7d92;
+      letter-spacing: 0.08em;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="ppi-canvas"></canvas>
+
+<div class="wrapper">
+  <header>
+    <a href="index.html" class="back-link">← Back to Project Home</a>
+    <div class="course-tag">15-418/618 · Parallel Computer Architecture and Programming · Spring 2026</div>
+    <h1>Milestone Report<br>Parallel Betweenness Centrality on PPI Networks</h1>
+    <div class="authors">Team: <span>Tanishqa Puhan</span> &amp; <span>Vera Zhong</span></div>
+  </header>
+
+  <nav>
+    <a href="#summary">Summary</a>
+    <a href="#completed">Completed</a>
+    <a href="#progress">Progress</a>
+    <a href="#poster-goals">Poster Goals</a>
+    <a href="#poster-plan">Poster Plan</a>
+    <a href="#preliminary">Preliminary</a>
+    <a href="#issues">Issues</a>
+    <a href="#schedule">Schedule</a>
+  </nav>
+
+  <!-- SUMMARY -->
+  <section id="summary">
+    <div class="section-label">Status</div>
+    <h2>Summary</h2>
+    <div class="summary-box">
+      We are on track with the schedule outlined in our proposal. The serial Brandes' implementation, BioGRID dataset pipeline, and benchmarking framework are complete and validated against a NetworkX reference. The MVP — static and dynamic source-parallel OpenMP variants plus a hybrid intra-BFS version — remains fully achievable in the remaining weeks.
+    </div>
+  </section>
+
+  <!-- WORK COMPLETED -->
+  <section id="completed">
+    <div class="section-label">Done</div>
+    <h2>Work Completed So Far</h2>
+    <p>
+      Since proposal approval, we have built out the foundational components of the project. We selected the human PPI network from <a href="https://thebiogrid.org/" target="_blank">BioGRID</a> as our primary dataset and built a graph loading pipeline that parses the raw interaction data into a clean, deduplicated edge list. We represent the graph in <strong>CSR (compressed sparse row)</strong> format, chosen because it provides good cache locality for neighbor iteration during BFS and is the standard choice for sparse graph workloads.
+    </p>
+    <p>
+      We have completed a serial implementation of Brandes' algorithm and verified its correctness by comparing its output against a NetworkX reference on small test graphs — centrality scores match within floating-point tolerance. Alongside the implementation, we built a benchmarking framework that handles warm-up runs, multiple trials, and consistent output formatting, which will let us collect reliable timing data across all configurations we plan to compare. We have also begun initial profiling of the serial baseline to understand the distribution of BFS costs across source vertices, which will inform our load balancing work in the next phase.
+    </p>
+    <ul class="bullets">
+      <li>BioGRID human PPI dataset loaded and deduplicated</li>
+      <li>CSR graph representation built and validated</li>
+      <li>Serial Brandes' implementation correct vs. NetworkX reference</li>
+      <li>Benchmarking framework with warm-ups and multi-trial averaging</li>
+      <li>Initial per-source BFS cost profiling underway</li>
+    </ul>
+  </section>
+
+  <!-- PROGRESS -->
+  <section id="progress">
+    <div class="section-label">Tracking</div>
+    <h2>Progress Relative to Goals</h2>
+    <p>
+      We are on track with the schedule outlined in our proposal and believe we will be able to produce all of our core deliverables. The MVP — serial Brandes', static source-parallel, dynamically-scheduled source-parallel, and a hybrid version that parallelizes within BFS for high-degree sources — remains fully achievable. The source-parallel variants are natural extensions of the serial code we have now finished, and the main intellectual work (analyzing load imbalance and designing the hybrid) falls directly out of the experiments we plan to run in the coming weeks.
+    </p>
+    <p>
+      For the stretch goals, we are being realistic about what is reachable. Fine-grained BFS parallelism and lock-free accumulation remain plausible since they build directly on the MVP code. A CUDA implementation and graph reordering experiments are more ambitious, and we are treating them as aspirational rather than planned.
+    </p>
+  </section>
+
+  <!-- REVISED POSTER GOALS -->
+  <section id="poster-goals">
+    <div class="section-label">Deliverables</div>
+    <h2>Revised Goals for Poster Session</h2>
+    <div class="goals-grid">
+      <div class="goal-card">
+        <div class="card-title">Plan to Achieve</div>
+        <p>Correct serial Brandes', static source-parallel OpenMP, dynamically-scheduled source-parallel, and a hybrid version that switches to intra-BFS parallelism for high-degree sources. Speedup and runtime graphs across thread counts and at least two graph sizes. An analysis of how power-law degree distributions in PPI networks create load imbalance, and how our scheduling strategies address it.</p>
+      </div>
+      <div class="goal-card">
+        <div class="card-title">Hope to Achieve</div>
+        <p>Lock-free or atomic-based accumulation of dependency scores as an alternative to per-thread accumulators, with a comparison of their overhead. Results on multiple PPI datasets (BioGRID human, STRING, yeast) to show how graph density affects scaling.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- POSTER PLAN -->
+  <section id="poster-plan">
+    <div class="section-label">Presentation</div>
+    <h2>Poster Session Plan</h2>
+    <p>
+      We plan to present speedup graphs showing how each of our parallel implementations scales with thread count on different PPI datasets, along with a breakdown of execution time showing how much is spent in BFS traversal versus dependency accumulation. We will also include visualizations of load imbalance — per-thread work distribution — to motivate our hybrid approach.
+    </p>
+  </section>
+
+  <!-- PRELIMINARY RESULTS -->
+  <section id="preliminary">
+    <div class="section-label">Early Findings</div>
+    <h2>Preliminary Results</h2>
+    <p>
+      We have initial serial timing measurements on the BioGRID human PPI network and have started collecting per-source BFS cost data. Early profiling confirms what we expected from the graph's degree distribution: a small number of hub vertices contribute disproportionately to total BFS runtime, which will make load balancing a meaningful problem to solve.
+    </p>
+  </section>
+
+  <!-- ISSUES -->
+  <section id="issues">
+    <div class="section-label">Risks</div>
+    <h2>Issues and Concerns</h2>
+    <p>
+      Our main open question is how large the gap will be between static and dynamic scheduling on real PPI data. If the imbalance from hub vertices is smaller than expected on our chosen datasets, the hybrid approach may not yield a dramatic improvement, which would make the analysis less interesting. To hedge against this, we plan to test on multiple datasets with varying density. Beyond this, we do not see any blockers we cannot work through, and most of what remains is focused implementation and experimentation work.
+    </p>
+  </section>
+
+  <!-- REVISED SCHEDULE -->
+  <section id="schedule">
+    <div class="section-label">Timeline</div>
+    <h2>Revised Schedule</h2>
+    <table class="schedule">
+      <thead>
+        <tr>
+          <th>Window</th>
+          <th>Goals</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Apr 15 – Apr 17</td>
+          <td>Finalize profiling of the serial baseline and lock in the BFS cost distribution data <em>(Vera)</em>. Begin static source-parallel OpenMP implementation <em>(Tanishqa)</em>.</td>
+        </tr>
+        <tr>
+          <td>Apr 18 – Apr 21</td>
+          <td>Finish static source-parallel version and measure initial speedup <em>(Tanishqa)</em>. Begin dynamically-scheduled source-parallel version and compare against static <em>(Vera)</em>.</td>
+        </tr>
+        <tr>
+          <td>Apr 22 – Apr 25</td>
+          <td>Finish dynamic scheduling variant and begin hybrid version that parallelizes within BFS for high-degree source vertices <em>(paired)</em>. Begin structured data collection across thread counts and graph sizes.</td>
+        </tr>
+        <tr>
+          <td>Apr 26 – Apr 28</td>
+          <td>Run full experiments varying graph size, thread count, and dataset <em>(Vera)</em>. Generate speedup graphs and analyze bottlenecks <em>(Tanishqa)</em>. Begin drafting the final report.</td>
+        </tr>
+        <tr>
+          <td>Apr 29 – Apr 30</td>
+          <td>Attempt stretch goals if time allows (lock-free accumulation or fine-grained BFS parallelism). Finalize analysis, complete report, and prepare poster materials <em>(paired)</em>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>
+    <span>15-418/618 · Spring 2026 · Carnegie Mellon University</span>
+    <span>Tanishqa Puhan &amp; Vera Zhong</span>
+  </footer>
+</div>
+
+<script>
+  const canvas = document.getElementById('ppi-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function buildAndDraw() {
+    const W = canvas.width = window.innerWidth;
+    const H = canvas.height = window.innerHeight;
+    const cx = W / 2, cy = H / 2;
+
+    function gauss() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+    }
+
+    const nodes = [];
+    const edges = [];
+    const adjSet = new Set();
+
+    function addEdge(a, b) {
+      if (a === b) return;
+      const key = Math.min(a,b) + ',' + Math.max(a,b);
+      if (adjSet.has(key)) return;
+      adjSet.add(key); edges.push([a, b]);
+      nodes[a].degree++; nodes[b].degree++;
+    }
+
+    const clusterR = Math.min(W, H) * 0.16;
+    const blobN = 160;
+    for (let i = 0; i < blobN; i++) {
+      nodes.push({ x: cx + gauss() * clusterR, y: cy + gauss() * clusterR * 0.9, degree: 0 });
+    }
+
+    for (let i = 1; i < blobN; i++) {
+      let best = -1, bestScore = Infinity;
+      for (let j = 0; j < i; j++) {
+        const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const score = dist / (nodes[j].degree + 1);
+        if (score < bestScore) { bestScore = score; best = j; }
+      }
+      addEdge(i, best);
+      for (let k = 0; k < 3; k++) {
+        if (Math.random() < 0.5) {
+          const j = Math.floor(Math.random() * i);
+          const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+          if (Math.sqrt(dx*dx+dy*dy) < clusterR * 1.2) addEdge(i, j);
+        }
+      }
+    }
+
+    const hubs = [...nodes]
+      .map((n, i) => ({i, deg: n.degree}))
+      .sort((a,b) => b.deg - a.deg)
+      .slice(0, 12);
+
+    for (const hub of hubs) {
+      const numArms = 1 + Math.floor(Math.random() * 2);
+      for (let arm = 0; arm < numArms; arm++) {
+        const angle = Math.random() * Math.PI * 2;
+        const armLen = 4 + Math.floor(Math.random() * 8);
+        let prevIdx = hub.i;
+        let px = nodes[hub.i].x, py = nodes[hub.i].y;
+        for (let k = 0; k < armLen; k++) {
+          const jitter = (Math.random() - 0.5) * 0.5;
+          const step = 18 + Math.random() * 10;
+          px += Math.cos(angle + jitter) * step;
+          py += Math.sin(angle + jitter) * step;
+          if (px < 30 || px > W-30 || py < 30 || py > H-30) break;
+          const idx = nodes.length;
+          nodes.push({ x: px, y: py, degree: 0 });
+          addEdge(prevIdx, idx);
+          prevIdx = idx;
+        }
+      }
+    }
+
+    const perimeterSlots = [
+      ...Array.from({length:6}, (_,i) => [W*0.08 + i*(W*0.16), H*0.06]),
+      ...Array.from({length:6}, (_,i) => [W*0.08 + i*(W*0.16), H*0.92]),
+      ...Array.from({length:4}, (_,i) => [W*0.04, H*0.15 + i*(H*0.22)]),
+      ...Array.from({length:4}, (_,i) => [W*0.94, H*0.15 + i*(H*0.22)]),
+    ];
+
+    for (const [ox, oy] of perimeterSlots) {
+      const dx = ox - cx, dy = oy - cy;
+      if (Math.sqrt(dx*dx+dy*dy) < clusterR * 1.8) continue;
+
+      const type = Math.random();
+      const startIdx = nodes.length;
+      if (type < 0.45) {
+        const len = 2 + Math.floor(Math.random() * 5);
+        const ang = Math.random() * Math.PI * 2;
+        for (let k = 0; k < len; k++) {
+          nodes.push({ x: ox + Math.cos(ang)*k*12 + (Math.random()-0.5)*4, y: oy + Math.sin(ang)*k*12 + (Math.random()-0.5)*4, degree: 0 });
+          if (k > 0) addEdge(startIdx+k-1, startIdx+k);
+        }
+      } else if (type < 0.75) {
+        const spokes = 2 + Math.floor(Math.random() * 4);
+        nodes.push({ x: ox, y: oy, degree: 0 });
+        for (let k = 0; k < spokes; k++) {
+          const a = (k/spokes)*Math.PI*2;
+          nodes.push({ x: ox+Math.cos(a)*13, y: oy+Math.sin(a)*13, degree: 0 });
+          addEdge(startIdx, startIdx+k+1);
+        }
+      } else {
+        nodes.push({ x: ox, y: oy, degree: 0 });
+        nodes.push({ x: ox+10, y: oy+(Math.random()-0.5)*6, degree: 0 });
+        addEdge(startIdx, startIdx+1);
+      }
+    }
+
+    const maxDeg = Math.max(...nodes.map(n => n.degree), 1);
+    for (const n of nodes) n.r = 1.3 + (n.degree / maxDeg) * 5.5;
+
+    ctx.clearRect(0, 0, W, H);
+
+    for (const [ai, bi] of edges) {
+      const a = nodes[ai], b = nodes[bi];
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = 'rgba(15,61,158,0.32)'; ctx.lineWidth = 0.8; ctx.stroke();
+    }
+
+    for (const n of nodes) {
+      const isHub = n.degree >= 8, isMed = n.degree >= 3;
+      if (isHub) {
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r+2.5, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(15,61,158,0.18)'; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+      ctx.fillStyle = isHub ? 'rgba(15,61,158,0.82)' : isMed ? 'rgba(15,61,158,0.62)' : 'rgba(15,61,158,0.42)';
+      ctx.fill();
+      if (isHub) { ctx.strokeStyle='rgba(15,61,158,0.95)'; ctx.lineWidth=0.8; ctx.stroke(); }
+    }
+  }
+
+  buildAndDraw();
+  window.addEventListener('resize', buildAndDraw);
+</script>
+</body>
+</html>

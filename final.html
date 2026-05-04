@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Final Results — Parallel Betweenness Centrality — 15-418 Project</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eef1f6;
+      --surface: #ffffff;
+      --border: #bdc8d8;
+      --accent: #0f3d9e;
+      --accent-light: #4a6fc4;
+      --accent-dim: #dbeafe;
+      --text: #1e2d3d;
+      --text-dim: #6b7c90;
+      --text-bright: #060f1a;
+      --warn: #b8420a;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'IBM Plex Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle, #cddae8 1.2px, transparent 1.2px);
+      background-size: 28px 28px;
+      opacity: 0.45;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #ppi-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      opacity: 0.18;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 0 2rem 6rem;
+    }
+
+    header {
+      padding: 5rem 0 3rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 3rem;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: #6a7d92;
+      text-decoration: none;
+      border: none;
+      margin-bottom: 1.5rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--accent); }
+
+    .course-tag {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .course-tag::before {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 1px;
+      background: var(--accent);
+    }
+
+    h1 {
+      font-family: var(--mono);
+      font-size: clamp(1.4rem, 3.5vw, 2rem);
+      font-weight: 600;
+      color: var(--text-bright);
+      line-height: 1.25;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.01em;
+    }
+
+    .authors {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #6a7d92;
+      letter-spacing: 0.05em;
+    }
+    .authors span { color: var(--text); font-weight: 500; }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 3rem;
+    }
+
+    nav a {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6a7d92;
+      text-decoration: none;
+      padding: 0.3rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    nav a:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    section {
+      margin-bottom: 3.5rem;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    section:nth-child(1) { animation-delay: 0.05s; }
+    section:nth-child(2) { animation-delay: 0.1s; }
+    section:nth-child(3) { animation-delay: 0.15s; }
+    section:nth-child(4) { animation-delay: 0.2s; }
+    section:nth-child(5) { animation-delay: 0.25s; }
+    section:nth-child(6) { animation-delay: 0.3s; }
+    section:nth-child(n+7) { animation-delay: 0.35s; }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.6rem;
+    }
+
+    h2 {
+      font-family: var(--mono);
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin: 1.6rem 0 0.7rem;
+      letter-spacing: 0.02em;
+    }
+
+    h3:first-child { margin-top: 0.4rem; }
+
+    p {
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+    p:last-child { margin-bottom: 0; }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent-dim);
+      transition: border-color 0.2s;
+    }
+    a:hover { border-color: var(--accent); }
+
+    code, .inline-code {
+      font-family: var(--mono);
+      font-size: 0.82em;
+      background: var(--accent-dim);
+      color: var(--accent);
+      padding: 0.05em 0.4em;
+      border-radius: 2px;
+    }
+
+    .summary-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      padding: 1.2rem 1.4rem;
+      font-size: 0.9rem;
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* ── KEY STATS ── */
+    .key-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 0.8rem;
+      margin: 1.4rem 0 0.4rem;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1rem 1.1rem;
+      border-radius: 2px;
+    }
+    .stat-num {
+      font-family: var(--mono);
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--accent);
+      line-height: 1.1;
+    }
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-top: 0.3rem;
+    }
+
+    /* ── TABLES ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      margin: 1rem 0;
+    }
+    .data-table thead th {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: left;
+      padding: 0.55rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+      background: #f5f7fb;
+    }
+    .data-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .data-table tbody tr:hover { background: #f5f7fb; }
+    .data-table td {
+      padding: 0.55rem 0.8rem;
+      vertical-align: top;
+    }
+    .data-table td.mono {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+    }
+    .data-table td.num {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      text-align: right;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    /* ── VARIANT CARDS ── */
+    .variant {
+      background: #f5f7fb;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent-light);
+      padding: 1.1rem 1.3rem;
+      border-radius: 0 2px 2px 0;
+      margin: 1rem 0;
+    }
+    .variant.killed {
+      border-left-color: var(--warn);
+    }
+    .variant.winner {
+      border-left-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .variant-tag {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-light);
+      margin-bottom: 0.3rem;
+    }
+    .variant.killed .variant-tag { color: var(--warn); }
+    .variant.winner .variant-tag { color: var(--accent); }
+    .variant-title {
+      font-family: var(--mono);
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin-bottom: 0.6rem;
+    }
+    .variant p {
+      font-size: 0.86rem;
+      margin-bottom: 0.7rem;
+    }
+    .variant p:last-child { margin-bottom: 0; }
+
+    /* ── CODE BLOCKS ── */
+    pre.code-block {
+      background: #0f1c2e;
+      color: #e6edf6;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      line-height: 1.6;
+      padding: 1.1rem 1.3rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 0.8rem 0 1rem;
+      border: 1px solid #1a2a42;
+    }
+    pre.code-block .kw { color: #a3c2ff; }
+    pre.code-block .cm { color: #6a7d92; font-style: italic; }
+    pre.code-block .pp { color: #ffb37a; }
+    pre.code-block .nm { color: #b6e5b6; }
+
+    /* ── EQUATIONS ── */
+    .equation {
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      text-align: center;
+      padding: 1rem 0.5rem;
+      margin: 0.8rem 0 1rem;
+      color: var(--text-bright);
+      background: #f5f7fb;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      overflow-x: auto;
+    }
+    .eq-sub { font-size: 0.7em; vertical-align: sub; }
+    .eq-sup { font-size: 0.7em; vertical-align: super; }
+    .eq-frac { display: inline-flex; flex-direction: column; vertical-align: middle; padding: 0 0.25em; font-size: 0.85em; }
+    .eq-frac > .num { border-bottom: 1px solid var(--text); padding: 0 0.2em; }
+    .eq-frac > .den { padding: 0.05em 0.2em; }
+    .eq-sum { font-size: 1.4em; vertical-align: middle; padding: 0 0.1em; }
+
+    /* ── FIGURE BLOCK ── */
+    figure {
+      margin: 1.4rem 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.2rem;
+    }
+    figure svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 380px;
+    }
+    figcaption {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-top: 0.8rem;
+      padding-top: 0.7rem;
+      border-top: 1px solid var(--border);
+      letter-spacing: 0.02em;
+      line-height: 1.6;
+    }
+    figcaption .fig-num {
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+    }
+
+    /* ── CHART STYLES (SVG) ── */
+    .chart-text {
+      font-family: var(--mono);
+      font-size: 10px;
+      fill: var(--text-dim);
+    }
+    .chart-axis-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      fill: var(--text);
+      font-weight: 500;
+      letter-spacing: 0.06em;
+    }
+    .chart-tick {
+      font-family: var(--mono);
+      font-size: 9px;
+      fill: var(--text-dim);
+    }
+    .chart-grid {
+      stroke: #d8e0eb;
+      stroke-width: 0.5;
+      stroke-dasharray: 2,3;
+    }
+    .chart-axis {
+      stroke: #95a5b8;
+      stroke-width: 1;
+    }
+    .legend-text {
+      font-family: var(--mono);
+      font-size: 10px;
+      fill: var(--text);
+    }
+
+    /* ── WHITE CARD SECTIONS ── */
+    section.card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.8rem 2rem;
+      box-shadow: 0 2px 12px rgba(15, 61, 158, 0.06);
+    }
+
+    /* ── WORK SPLIT ── */
+    .work-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 600px) { .work-grid { grid-template-columns: 1fr; } }
+
+    .work-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1.2rem;
+      border-radius: 2px;
+    }
+    .work-card .card-title {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+      color: var(--accent);
+    }
+    .work-card ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .work-card li {
+      font-size: 0.84rem;
+      padding: 0.3rem 0 0.3rem 1.2rem;
+      position: relative;
+    }
+    .work-card li::before {
+      content: '▸';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 0.78rem;
+    }
+    .work-split {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1.4rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+    }
+    .work-split strong { color: var(--accent); font-weight: 600; }
+
+    /* ── REFERENCES ── */
+    ol.refs {
+      list-style: none;
+      counter-reset: ref;
+      padding: 0;
+      margin: 0;
+    }
+    ol.refs li {
+      counter-increment: ref;
+      padding: 0.5rem 0 0.5rem 2.4rem;
+      font-size: 0.82rem;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+    ol.refs li:last-child { border-bottom: none; }
+    ol.refs li::before {
+      content: '[' counter(ref) ']';
+      position: absolute;
+      left: 0;
+      font-family: var(--mono);
+      font-weight: 600;
+      color: var(--accent);
+      font-size: 0.78rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 1.5rem;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: #6a7d92;
+      letter-spacing: 0.08em;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="ppi-canvas"></canvas>
+
+<div class="wrapper">
+  <header>
+    <a href="index.html" class="back-link">← Back to Project Home</a>
+    <div class="course-tag">15-418/618 · Parallel Computer Architecture and Programming · Spring 2026</div>
+    <h1>Final Report<br>Parallel Betweenness Centrality on a Human PPI Network</h1>
+    <div class="authors">Team: <span>Tanishqa Puhan</span> &amp; <span>Vera Zhong</span> &middot; April 30, 2026</div>
+  </header>
+
+  <nav>
+    <a href="#summary">Summary</a>
+    <a href="#background">Background</a>
+    <a href="#approach">Approach</a>
+    <a href="#results">Results</a>
+    <a href="#bottleneck">Bottleneck</a>
+    <a href="#bc-nodes">Top BC Nodes</a>
+    <a href="#machine">Machine Target</a>
+    <a href="#refs">References</a>
+    <a href="#work">Work Distribution</a>
+  </nav>
+
+  <!-- ── SUMMARY ── -->
+  <section id="summary" class="card">
+    <div class="section-label">Overview</div>
+    <h2>Summary</h2>
+    <div class="summary-box">
+      We present a parallel implementation of Brandes' betweenness centrality (BC) algorithm applied to the BioGRID human protein-protein interaction (PPI) graph (18,727 nodes) using C++ and OpenMP on a shared-memory multicore CPU. We designed, implemented, and benchmarked seven algorithmic variants, systematically diagnosing the bottleneck at each stage. Our best configuration achieves a <strong>3.57× speedup with 8 threads</strong>. We show that naive parallelization strategies — atomic shared accumulation and intra-BFS parallelism — both fail due to contention and synchronization overhead respectively, and that the <strong>memory subsystem, not compute, is the binding constraint on scaling</strong>.
+    </div>
+    <div class="key-stats">
+      <div class="stat"><div class="stat-num">3.57×</div><div class="stat-label">Best speedup (8T)</div></div>
+      <div class="stat"><div class="stat-num">18,727</div><div class="stat-label">Graph nodes</div></div>
+      <div class="stat"><div class="stat-num">52.6 s</div><div class="stat-label">Serial baseline</div></div>
+      <div class="stat"><div class="stat-num">14.6 s</div><div class="stat-label">Best parallel time</div></div>
+      <div class="stat"><div class="stat-num">7</div><div class="stat-label">Variants benchmarked</div></div>
+      <div class="stat"><div class="stat-num">2.24×</div><div class="stat-label">Work inflation @ 8T</div></div>
+    </div>
+  </section>
+
+  <!-- ── BACKGROUND ── -->
+  <section id="background" class="card">
+    <div class="section-label">Algorithm</div>
+    <h2>1 · Background</h2>
+
+    <h3>1.1 Betweenness Centrality</h3>
+    <p>
+      Betweenness centrality quantifies the importance of a node as an intermediary on shortest paths. For a node <em>v</em>, the standard definition is:
+    </p>
+    <div class="equation">
+      BC(v) &nbsp;=&nbsp;
+      <span class="eq-sum">∑</span><span class="eq-sub">s≠v≠t</span>&nbsp;
+      <span class="eq-frac"><span class="num">σ(s, t | v)</span><span class="den">σ(s, t)</span></span>
+    </div>
+    <p>
+      where σ(s, t) is the total number of shortest paths from s to t and σ(s, t | v) is the number of those paths that pass through v. Naïvely computing BC requires enumerating all-pairs shortest paths in O(V²(V + E)) time. <strong>Brandes' algorithm</strong> [1] reduces this to O(V(V + E)) by computing, for each source s, a recursive pair-dependency score via backward accumulation over the BFS tree:
+    </p>
+    <div class="equation">
+      δ<span class="eq-sub">s</span>[v] &nbsp;+=&nbsp;
+      <span class="eq-sum">∑</span><span class="eq-sub">w : v ∈ pred(w)</span>&nbsp;
+      <span class="eq-frac"><span class="num">σ(s, v)</span><span class="den">σ(s, w)</span></span>
+      &nbsp;·&nbsp; (1 + δ<span class="eq-sub">s</span>[w])
+    </div>
+    <p>The final BC score is then:</p>
+    <div class="equation">
+      BC(v) &nbsp;=&nbsp;
+      <span class="eq-frac"><span class="num">1</span><span class="den">2</span></span>
+      <span class="eq-sum">∑</span><span class="eq-sub">s≠v</span>&nbsp;δ<span class="eq-sub">s</span>[v]
+    </div>
+    <p>
+      where the factor of ½ corrects for double-counting in undirected graphs. This two-phase BFS approach is the standard algorithm for exact BC computation on unweighted graphs.
+    </p>
+
+    <h3>1.2 The Brandes Algorithm</h3>
+    <p>For each source vertex <em>s</em>, Brandes executes two phases:</p>
+    <ol style="padding-left:1.4rem; margin: 0.5rem 0 1rem; font-size: 0.9rem;">
+      <li style="margin-bottom: 0.6rem;"><strong>BFS forward phase.</strong> Compute shortest-path counts σ[v] and BFS distances dist[v] for all v. Maintain a stack of visited nodes in non-decreasing BFS-distance order and, for each node w, a predecessor list pred[w] of all neighbors u with dist[u] = dist[w] − 1.</li>
+      <li><strong>Backward accumulation phase.</strong> Pop nodes from the stack in reverse BFS order. For each node w, propagate dependency values to each predecessor v per the recurrence above. This phase carries strict sequential dependencies: each BFS depth level must be fully processed before the level above it, and the backward pass cannot begin until the forward BFS is complete.</li>
+    </ol>
+
+    <h3>1.3 Key Data Structures</h3>
+    <p>Per-source working arrays used by Brandes' algorithm. Each must be allocated, initialized, and reset for every one of the n source iterations.</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Structure</th><th>Type</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono">adj[v]</td><td class="mono">vector&lt;vector&lt;int&gt;&gt;</td><td>Adjacency list (0-based node IDs)</td></tr>
+        <tr><td class="mono">sigma[v]</td><td class="mono">double[n]</td><td>Shortest-path count from s to v</td></tr>
+        <tr><td class="mono">dist[v]</td><td class="mono">int[n]</td><td>BFS distance from s</td></tr>
+        <tr><td class="mono">pred[w]</td><td class="mono">vector&lt;int&gt;[n]</td><td>Predecessors of w on shortest paths</td></tr>
+        <tr><td class="mono">delta[v]</td><td class="mono">double[n]</td><td>Accumulated dependency for v</td></tr>
+        <tr><td class="mono">stk[]</td><td class="mono">int[n]</td><td>BFS-visited nodes in discovery order</td></tr>
+        <tr><td class="mono">bc[v]</td><td class="mono">double[n]</td><td>Final betweenness centrality score</td></tr>
+      </tbody>
+    </table>
+
+    <h3>1.4 Challenges for Parallelization</h3>
+    <p>Parallelizing Brandes efficiently on this graph is non-trivial for several compounding reasons.</p>
+
+    <p><strong>Memory pressure scales with thread count.</strong> Each thread requires private copies of five working arrays of size n, totaling ≈750 KB per thread. At 8 threads this footprint reaches ≈6 MB — at or above the L3 cache capacity on most consumer CPUs — meaning threads actively evict each other's working data. Simply adding threads increases total work rather than reducing it, as we confirm experimentally.</p>
+
+    <p><strong>Severe and irregular load imbalance.</strong> Per-source execution times span a 255× range (21 µs to 5.4 ms), driven by the PPI graph's extreme degree skew. A small number of hub proteins (BRCA1, TSG101, CASP8) are connected to thousands of other nodes and participate in millions of shortest paths; sources adjacent to these hubs require orders of magnitude more work than isolated proteins. Static work distribution strategies risk leaving threads idle while others process the heaviest sources.</p>
+
+    <p><strong>Shared state and accumulation races.</strong> The final <code>bc[]</code> array is updated by every source iteration for every node on its shortest paths. Concurrent writes require either fine-grained synchronization — which serializes updates on the high-degree hub nodes that are touched by all threads simultaneously — or private per-thread accumulators with a reduction phase, which introduces its own memory and bandwidth overhead.</p>
+
+    <p><strong>Fine-grained parallelism is bottlenecked by the graph's small diameter.</strong> An alternative to source-level parallelism is to parallelize within each source's BFS. However, the PPI graph has a diameter of only ≈6 levels, yielding very small per-level frontiers. Any fine-grained parallelism strategy must contend with this: the work per parallel section is smaller than the synchronization overhead required to manage it.</p>
+  </section>
+
+  <!-- ── APPROACH ── -->
+  <section id="approach" class="card">
+    <div class="section-label">Implementation</div>
+    <h2>2 · Approach</h2>
+
+    <h3>2.1 Input Dataset</h3>
+    <p>
+      We use the <strong>BioGRID v5.0.256 human PPI dataset</strong> (Homo sapiens, organism ID 9606) [2]. The raw TAB3 file contains interactions across multiple experimental system types and species. We filter to physical interactions only, discarding genetic interactions, non-human partners, self-loops, and duplicate undirected edges. After deduplication the graph has <strong>18,727 nodes</strong>; 2,113 have zero betweenness (isolated proteins or nodes in small components). Entrez Gene IDs are remapped to contiguous integers 0…n−1 at load time.
+    </p>
+
+    <h3>2.2 Serial Baseline</h3>
+    <p>
+      The serial implementation pre-allocates all working arrays once and reuses them across all 18,727 source iterations. The BFS uses a hand-rolled queue (<code>vector&lt;int&gt;</code> with head/tail pointers) to avoid repeated allocation overhead. Before each source, all n entries of <code>sigma</code>, <code>dist</code>, <code>delta</code>, and <code>pred</code> are reset via a full O(n) sweep. <strong>This reset is necessary for correctness but constitutes a significant fraction of total runtime</strong>, as each sweep touches 750 KB of memory cold. Serial total time: <strong>52.61 s</strong>.
+    </p>
+
+    <h3>2.3 Variant 1 — Inter-Source OpenMP, Static Scheduling</h3>
+    <div class="variant">
+      <div class="variant-tag">Variant 1</div>
+      <div class="variant-title">Inter-source parallelism · static schedule · private accumulators</div>
+      <p>
+        The most direct approach to parallelism is to distribute the source loop across threads. The key design decision is how to handle the shared <code>bc[]</code> accumulator: concurrent writes from multiple threads require either synchronization or replication. We chose <strong>replication</strong>: each thread maintains a private <code>bc_local[tid][·]</code> array and accumulates into it exclusively. After the parallel region, the per-thread arrays are reduced serially into the final <code>bc[]</code>. This eliminates all synchronization during the parallel region at the cost of O(nT) memory and a serial reduction phase.
+      </p>
+      <p>
+        We use <code>schedule(static)</code>, assigning each thread a contiguous block of ≈n/T sources. Each thread independently allocates its own private working arrays.
+      </p>
+    </div>
+<pre class="code-block"><span class="pp">#pragma omp parallel</span> num_threads(T)
+{
+    <span class="kw">int</span> tid = omp_get_thread_num();
+    <span class="cm">// private working arrays, size n each (~750 KB per thread)</span>
+    ...
+    <span class="pp">#pragma omp for</span> schedule(static)
+    <span class="kw">for</span> (<span class="kw">int</span> s = 0; s &lt; n; s++) {
+        <span class="cm">// BFS forward + backward on private arrays</span>
+        <span class="cm">// write results to bc_local[tid]</span>
+    }
+}
+<span class="cm">// serial reduction: bc[v] = sum_t bc_local[t][v]</span></pre>
+
+    <h3>2.4 Variant 2 — Inter-Source OpenMP, Dynamic Scheduling</h3>
+    <div class="variant">
+      <div class="variant-tag">Variant 2</div>
+      <div class="variant-title">Inter-source parallelism · dynamic schedule</div>
+      <p>
+        To address load imbalance from the 255× spread in per-source times, we replace static scheduling with <code>schedule(dynamic, 1)</code>, handing sources out one at a time from a shared work queue. This ensures that no thread sits idle while another processes a heavy hub-adjacent source. The tradeoff is synchronization overhead: every source assignment requires an atomic increment on a shared counter, adding 18,727 atomic operations to the critical path.
+      </p>
+    </div>
+
+    <h3>2.5 Variant 3 — Shared bc[] with Atomic Accumulation</h3>
+    <div class="variant killed">
+      <div class="variant-tag">Variant 3 · trade-off study</div>
+      <div class="variant-title">Single shared bc[] · atomic writes</div>
+      <p>
+        Rather than replicating <code>bc[]</code> per thread, this variant uses a single shared array with <code>#pragma omp atomic</code> for every backward-accumulation write. This eliminates the O(nT) memory overhead of private accumulators and the serial reduction phase, but introduces fine-grained synchronization on <code>bc[]</code>. <strong>The critical problem is that hub proteins appear on millions of shortest paths</strong>, so all threads simultaneously write to the same small set of <code>bc[v]</code> entries during the backward pass. This serializes updates on the hottest entries and generates false sharing across nearby cache lines.
+      </p>
+    </div>
+
+    <h3>2.6 Variant 4 — Intra-BFS Parallelism</h3>
+    <div class="variant killed">
+      <div class="variant-tag">Variant 4 · counterproductive</div>
+      <div class="variant-title">Serial source loop · parallel within each accumulation</div>
+      <p>
+        An alternative parallelization strategy is to keep the source loop serial and instead parallelize within each source's accumulation phase. We perform BFS serially (building a <code>levels[]</code> array grouping nodes by BFS depth), then process the backward pass level-by-level in parallel:
+      </p>
+    </div>
+<pre class="code-block"><span class="kw">for</span> (<span class="kw">int</span> lvl = levels.size()-1; lvl &gt;= 1; lvl--) {
+    <span class="pp">#pragma omp parallel for</span> num_threads(T) schedule(static)
+    <span class="kw">for</span> (<span class="kw">int</span> idx = 0; idx &lt; levels[lvl].size(); idx++) {
+        <span class="kw">int</span> w = levels[lvl][idx];
+        <span class="kw">for</span> (<span class="kw">int</span> v : pred[w]) {
+            <span class="kw">double</span> contrib = (sigma[v]/sigma[w]) * (1.0 + delta[w]);
+            <span class="pp">#pragma omp atomic</span>
+            delta[v] += contrib;
+        }
+    }
+    <span class="kw">for</span> (<span class="kw">int</span> w : levels[lvl])
+        <span class="kw">if</span> (w != s) bc[w] += delta[w];
+}</pre>
+    <p>
+      Nodes at the same BFS level write to predecessors one level shallower, so a barrier between levels ensures correctness. Atomic adds to <code>delta[]</code> are necessary because multiple nodes at depth ℓ+1 can share a predecessor at depth ℓ, creating write conflicts. <strong>The PPI graph's small diameter limits the available parallelism at each level</strong>, as discussed in Section 3.
+    </p>
+
+    <h3>2.7 Variant 5 — Serial with Lazy Reset</h3>
+    <div class="variant">
+      <div class="variant-tag">Variant 5 · serial optimization</div>
+      <div class="variant-title">Serial · reset only visited nodes after accumulation</div>
+      <p>
+        Profiling the serial baseline revealed that the O(n) reset before each source represents a disproportionate share of total runtime for sparse sources. <strong>Critically, this reset precedes BFS, meaning it touches memory cold</strong> — dirtying cache lines before any useful work has been done. For isolated nodes and small components, the reset processes all 18,727 entries despite BFS visiting only a handful.
+      </p>
+      <p>
+        The lazy-reset optimization defers the reset to <em>after</em> the accumulation phase, resetting only the nodes actually visited during BFS:
+      </p>
+    </div>
+<pre class="code-block"><span class="cm">// Track visited nodes during BFS</span>
+visited.push_back(w);  <span class="cm">// whenever a new node is discovered</span>
+
+<span class="cm">// After accumulation: reset only visited nodes (cache-warm)</span>
+<span class="kw">for</span> (<span class="kw">int</span> v : visited) {
+    pred[v].clear(); dist[v] = -1;
+    sigma[v] = 0.0; delta[v] = 0.0;
+}</pre>
+    <p>
+      This reduces the reset from O(n) to O(|visited|) and ensures the reset memory is warm in cache (having just been written during BFS and accumulation), reducing effective memory bandwidth.
+    </p>
+
+    <h3>2.8 Variant 6 — Optimized Parallel with Lazy Reset</h3>
+    <div class="variant winner">
+      <div class="variant-tag">Variant 6 · final design</div>
+      <div class="variant-title">Inter-source static + lazy reset · per-thread visited[] tracking</div>
+      <p>
+        The final variant combines static inter-source parallelism (Variant 1) with lazy reset (Variant 5). Each thread maintains its own private <code>visited[]</code> vector alongside its other working arrays. <strong>This directly addresses the memory bandwidth saturation diagnosed in Variant 1</strong>: by reducing each thread's active working-set size, the combined footprint of 8 simultaneous threads is more likely to fit within the shared L3 cache, reducing the mutual eviction that inflates per-source time.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── RESULTS ── -->
+  <section id="results" class="card">
+    <div class="section-label">Measurements</div>
+    <h2>3 · Results</h2>
+    <p>
+      All experiments ran on the GHC machines, specifically machine 78. Wall time for parallel variants is approximated as <em>(sum of per-source times) / T</em>; actual wall time equals or slightly exceeds this estimate depending on load balance.
+    </p>
+
+    <!-- FIGURE 1: Speedup -->
+    <figure>
+      <svg viewBox="0 0 700 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Speedup vs Number of Threads">
+        <!-- Title -->
+        <text x="350" y="22" text-anchor="middle" class="chart-axis-label" style="font-size: 12px;">SPEEDUP vs. NUMBER OF THREADS</text>
+
+        <!-- Plot area: x 70-620, y 50-300 -->
+        <!-- Gridlines -->
+        <line x1="70" y1="50" x2="620" y2="50" class="chart-grid" />
+        <line x1="70" y1="81" x2="620" y2="81" class="chart-grid" />
+        <line x1="70" y1="113" x2="620" y2="113" class="chart-grid" />
+        <line x1="70" y1="144" x2="620" y2="144" class="chart-grid" />
+        <line x1="70" y1="175" x2="620" y2="175" class="chart-grid" />
+        <line x1="70" y1="206" x2="620" y2="206" class="chart-grid" />
+        <line x1="70" y1="238" x2="620" y2="238" class="chart-grid" />
+        <line x1="70" y1="269" x2="620" y2="269" class="chart-grid" />
+
+        <!-- Y-axis ticks: 1, 2, 3, 4, 5, 6, 7, 8 -->
+        <text x="62" y="304" text-anchor="end" class="chart-tick">0</text>
+        <text x="62" y="273" text-anchor="end" class="chart-tick">1</text>
+        <text x="62" y="242" text-anchor="end" class="chart-tick">2</text>
+        <text x="62" y="210" text-anchor="end" class="chart-tick">3</text>
+        <text x="62" y="179" text-anchor="end" class="chart-tick">4</text>
+        <text x="62" y="148" text-anchor="end" class="chart-tick">5</text>
+        <text x="62" y="117" text-anchor="end" class="chart-tick">6</text>
+        <text x="62" y="85" text-anchor="end" class="chart-tick">7</text>
+        <text x="62" y="54" text-anchor="end" class="chart-tick">8</text>
+
+        <!-- X-axis ticks: 1, 2, 4, 8 (positions: 70, 253, 437, 620) -->
+        <text x="70" y="320" text-anchor="middle" class="chart-tick">1</text>
+        <text x="253" y="320" text-anchor="middle" class="chart-tick">2</text>
+        <text x="437" y="320" text-anchor="middle" class="chart-tick">4</text>
+        <text x="620" y="320" text-anchor="middle" class="chart-tick">8</text>
+
+        <!-- Axes -->
+        <line x1="70" y1="300" x2="620" y2="300" class="chart-axis" />
+        <line x1="70" y1="50" x2="70" y2="300" class="chart-axis" />
+
+        <!-- Axis labels -->
+        <text x="345" y="345" text-anchor="middle" class="chart-axis-label">Number of Threads</text>
+        <text x="20" y="175" text-anchor="middle" class="chart-axis-label" transform="rotate(-90 20 175)">Speedup (×)</text>
+
+        <!-- Ideal line (1, 2, 4, 8) - dashed gray -->
+        <!-- y values: 1→269, 2→238, 4→175, 8→50 -->
+        <polyline points="70,269 253,238 437,175 620,50"
+                  fill="none" stroke="#8a9bb0" stroke-width="1.5" stroke-dasharray="6,4" />
+        <circle cx="70" cy="269" r="3" fill="#8a9bb0" />
+        <circle cx="253" cy="238" r="3" fill="#8a9bb0" />
+        <circle cx="437" cy="175" r="3" fill="#8a9bb0" />
+        <circle cx="620" cy="50" r="3" fill="#8a9bb0" />
+
+        <!-- omp-static: 1.00, 1.82, 2.81, 3.57 -->
+        <!-- y values: 1→269, 1.82→244, 2.81→213, 3.57→189 -->
+        <polyline points="70,269 253,244 437,213 620,189"
+                  fill="none" stroke="#0f3d9e" stroke-width="2.2" />
+        <circle cx="70" cy="269" r="4" fill="#0f3d9e" />
+        <circle cx="253" cy="244" r="4" fill="#0f3d9e" />
+        <circle cx="437" cy="213" r="4" fill="#0f3d9e" />
+        <circle cx="620" cy="189" r="4" fill="#0f3d9e" />
+        <text x="615" y="183" text-anchor="end" class="chart-text" style="fill:#0f3d9e; font-weight:600;">3.57×</text>
+
+        <!-- omp-dynamic: 1.00, 1.81, 2.78, 3.48 -->
+        <!-- y values: 1→269, 1.81→244, 2.78→213, 3.48→191 -->
+        <polyline points="70,269 253,244.5 437,213.7 620,193"
+                  fill="none" stroke="#4a6fc4" stroke-width="2.2" stroke-dasharray="3,3" />
+        <circle cx="70" cy="269" r="4" fill="#4a6fc4" />
+        <circle cx="253" cy="244.5" r="4" fill="#4a6fc4" />
+        <circle cx="437" cy="213.7" r="4" fill="#4a6fc4" />
+        <circle cx="620" cy="193" r="4" fill="#4a6fc4" />
+
+        <!-- Legend -->
+        <g transform="translate(95, 60)">
+          <rect x="0" y="0" width="170" height="58" fill="white" stroke="#bdc8d8" stroke-width="0.8" />
+          <line x1="10" y1="14" x2="32" y2="14" stroke="#8a9bb0" stroke-width="1.5" stroke-dasharray="4,3" />
+          <text x="38" y="17" class="legend-text">Ideal</text>
+          <line x1="10" y1="32" x2="32" y2="32" stroke="#0f3d9e" stroke-width="2.2" />
+          <text x="38" y="35" class="legend-text">omp-static</text>
+          <line x1="10" y1="50" x2="32" y2="50" stroke="#4a6fc4" stroke-width="2.2" stroke-dasharray="3,3" />
+          <text x="38" y="53" class="legend-text">omp-dynamic</text>
+        </g>
+      </svg>
+      <figcaption><span class="fig-num">FIG 1.</span> Observed speedup vs. ideal linear scaling. Both variants plateau near 3.5× at 8 threads, far below the ideal 8×, due to memory-bandwidth saturation.</figcaption>
+    </figure>
+
+    <!-- FIGURE 2: Parallel Efficiency -->
+    <figure>
+      <svg viewBox="0 0 700 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Parallel Efficiency vs Number of Threads">
+        <text x="350" y="22" text-anchor="middle" class="chart-axis-label" style="font-size: 12px;">PARALLEL EFFICIENCY vs. NUMBER OF THREADS</text>
+
+        <!-- Plot area: x 70-620, y 50-280 -->
+        <!-- Gridlines (every 20%) -->
+        <line x1="70" y1="50" x2="620" y2="50" class="chart-grid" />
+        <line x1="70" y1="96" x2="620" y2="96" class="chart-grid" />
+        <line x1="70" y1="142" x2="620" y2="142" class="chart-grid" />
+        <line x1="70" y1="188" x2="620" y2="188" class="chart-grid" />
+        <line x1="70" y1="234" x2="620" y2="234" class="chart-grid" />
+
+        <!-- Y-axis labels: 0%, 20%, 40%, 60%, 80%, 100% -->
+        <text x="62" y="284" text-anchor="end" class="chart-tick">0%</text>
+        <text x="62" y="238" text-anchor="end" class="chart-tick">20%</text>
+        <text x="62" y="192" text-anchor="end" class="chart-tick">40%</text>
+        <text x="62" y="146" text-anchor="end" class="chart-tick">60%</text>
+        <text x="62" y="100" text-anchor="end" class="chart-tick">80%</text>
+        <text x="62" y="54" text-anchor="end" class="chart-tick">100%</text>
+
+        <!-- X-axis ticks: 2, 4, 8 -->
+        <text x="70" y="300" text-anchor="middle" class="chart-tick">2</text>
+        <text x="345" y="300" text-anchor="middle" class="chart-tick">4</text>
+        <text x="620" y="300" text-anchor="middle" class="chart-tick">8</text>
+
+        <!-- Axes -->
+        <line x1="70" y1="280" x2="620" y2="280" class="chart-axis" />
+        <line x1="70" y1="50" x2="70" y2="280" class="chart-axis" />
+
+        <text x="345" y="325" text-anchor="middle" class="chart-axis-label">Number of Threads</text>
+        <text x="20" y="165" text-anchor="middle" class="chart-axis-label" transform="rotate(-90 20 165)">Parallel Efficiency</text>
+
+        <!-- Ideal at 100% (y=50) -->
+        <line x1="70" y1="50" x2="620" y2="50" stroke="#8a9bb0" stroke-width="1.5" stroke-dasharray="6,4" />
+        <text x="615" y="45" text-anchor="end" class="chart-text" style="fill:#6a7d92;">Ideal (100%)</text>
+
+        <!-- omp-static: 91%, 70%, 45% -->
+        <!-- y: 91→71, 70→119, 45→177 -->
+        <polyline points="70,71 345,119 620,177"
+                  fill="none" stroke="#0f3d9e" stroke-width="2.2" />
+        <circle cx="70" cy="71" r="4" fill="#0f3d9e" />
+        <circle cx="345" cy="119" r="4" fill="#0f3d9e" />
+        <circle cx="620" cy="177" r="4" fill="#0f3d9e" />
+        <text x="78" y="65" class="chart-text" style="fill:#0f3d9e; font-weight:600;">91%</text>
+        <text x="615" y="172" text-anchor="end" class="chart-text" style="fill:#0f3d9e; font-weight:600;">45%</text>
+
+        <!-- omp-dynamic: 91%, 69%, 43.5% -->
+        <polyline points="70,71 345,121 620,180"
+                  fill="none" stroke="#4a6fc4" stroke-width="2.2" stroke-dasharray="3,3" />
+        <circle cx="70" cy="71" r="4" fill="#4a6fc4" />
+        <circle cx="345" cy="121" r="4" fill="#4a6fc4" />
+        <circle cx="620" cy="180" r="4" fill="#4a6fc4" />
+
+        <!-- Legend -->
+        <g transform="translate(450, 215)">
+          <rect x="0" y="0" width="160" height="56" fill="white" stroke="#bdc8d8" stroke-width="0.8" />
+          <line x1="10" y1="14" x2="32" y2="14" stroke="#0f3d9e" stroke-width="2.2" />
+          <text x="38" y="17" class="legend-text">omp-static</text>
+          <line x1="10" y1="32" x2="32" y2="32" stroke="#4a6fc4" stroke-width="2.2" stroke-dasharray="3,3" />
+          <text x="38" y="35" class="legend-text">omp-dynamic</text>
+          <line x1="10" y1="49" x2="32" y2="49" stroke="#8a9bb0" stroke-width="1.5" stroke-dasharray="4,3" />
+          <text x="38" y="52" class="legend-text">Ideal</text>
+        </g>
+      </svg>
+      <figcaption><span class="fig-num">FIG 2.</span> Parallel efficiency degrades sharply with thread count, from 91% at 2 threads to 45% at 8 threads, indicating that thread interference costs grow faster than compute savings.</figcaption>
+    </figure>
+
+    <!-- FIGURE 3: Wall Time Bar Chart -->
+    <figure>
+      <svg viewBox="0 0 700 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Wall Time by Configuration">
+        <text x="350" y="22" text-anchor="middle" class="chart-axis-label" style="font-size: 12px;">WALL TIME BY CONFIGURATION (8 THREADS WHERE APPLICABLE)</text>
+
+        <!-- Plot area: x 90-660, y 50-290 -->
+        <!-- Y-axis: 0 to 70 sec -->
+        <!-- Gridlines at 10, 20, 30, 40, 50, 60, 70 -->
+        <line x1="90" y1="50" x2="660" y2="50" class="chart-grid" />
+        <line x1="90" y1="84" x2="660" y2="84" class="chart-grid" />
+        <line x1="90" y1="119" x2="660" y2="119" class="chart-grid" />
+        <line x1="90" y1="153" x2="660" y2="153" class="chart-grid" />
+        <line x1="90" y1="187" x2="660" y2="187" class="chart-grid" />
+        <line x1="90" y1="222" x2="660" y2="222" class="chart-grid" />
+        <line x1="90" y1="256" x2="660" y2="256" class="chart-grid" />
+
+        <text x="82" y="294" text-anchor="end" class="chart-tick">0</text>
+        <text x="82" y="260" text-anchor="end" class="chart-tick">10</text>
+        <text x="82" y="226" text-anchor="end" class="chart-tick">20</text>
+        <text x="82" y="191" text-anchor="end" class="chart-tick">30</text>
+        <text x="82" y="157" text-anchor="end" class="chart-tick">40</text>
+        <text x="82" y="123" text-anchor="end" class="chart-tick">50</text>
+        <text x="82" y="89" text-anchor="end" class="chart-tick">60</text>
+        <text x="82" y="55" text-anchor="end" class="chart-tick">70</text>
+
+        <!-- Axes -->
+        <line x1="90" y1="290" x2="660" y2="290" class="chart-axis" />
+        <line x1="90" y1="50" x2="90" y2="290" class="chart-axis" />
+
+        <text x="375" y="345" text-anchor="middle" class="chart-axis-label">Configuration</text>
+        <text x="20" y="170" text-anchor="middle" class="chart-axis-label" transform="rotate(-90 20 170)">Wall Time (s)</text>
+
+        <!-- Bars: serial 52.6, omp-static 14.8, omp-dynamic 15.1, omp-atomic 14.6, intra-bfs 66.6 -->
+        <!-- Scale: 70s = 240px → 1s = 3.43px. y = 290 - val*3.43 -->
+        <!-- serial: 290-180=110; static: 290-50.7=239.3; dynamic: 290-51.7=238.3; atomic: 290-50.0=240; intra: 290-228.3=61.7 -->
+
+        <!-- 5 bars centered in plot, width ~80, gap ~25, start x = 105 -->
+        <rect x="115" y="110" width="78" height="180" fill="#8a9bb0" />
+        <rect x="218" y="239.3" width="78" height="50.7" fill="#0f3d9e" />
+        <rect x="321" y="238.3" width="78" height="51.7" fill="#0f3d9e" />
+        <rect x="424" y="240" width="78" height="50" fill="#4a6fc4" />
+        <rect x="527" y="61.7" width="78" height="228.3" fill="#b8420a" />
+
+        <!-- Bar labels (values) -->
+        <text x="154" y="103" text-anchor="middle" class="chart-text" style="font-weight:600; fill:#1e2d3d;">52.6</text>
+        <text x="257" y="232" text-anchor="middle" class="chart-text" style="font-weight:600; fill:#0f3d9e;">14.8</text>
+        <text x="360" y="231" text-anchor="middle" class="chart-text" style="font-weight:600; fill:#0f3d9e;">15.1</text>
+        <text x="463" y="233" text-anchor="middle" class="chart-text" style="font-weight:600; fill:#4a6fc4;">14.6</text>
+        <text x="566" y="55" text-anchor="middle" class="chart-text" style="font-weight:600; fill:#b8420a;">66.6</text>
+
+        <!-- X-axis labels (config names) -->
+        <text x="154" y="308" text-anchor="middle" class="chart-tick">serial</text>
+        <text x="257" y="308" text-anchor="middle" class="chart-tick">omp-static</text>
+        <text x="360" y="308" text-anchor="middle" class="chart-tick">omp-dynamic</text>
+        <text x="463" y="308" text-anchor="middle" class="chart-tick">omp-atomic</text>
+        <text x="566" y="308" text-anchor="middle" class="chart-tick">intra-bfs</text>
+      </svg>
+      <figcaption><span class="fig-num">FIG 3.</span> Wall time for all variants at 8 threads (serial shown for reference). <code>intra-bfs</code> is 26% slower than serial; <code>omp-atomic</code> performs comparably to <code>omp-static</code> despite its synchronization overhead.</figcaption>
+    </figure>
+
+    <!-- FIGURE 4: Total Work Inflation -->
+    <figure>
+      <svg viewBox="0 0 700 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Total Work Inflation with Thread Count">
+        <text x="350" y="22" text-anchor="middle" class="chart-axis-label" style="font-size: 12px;">TOTAL WORK INFLATION WITH THREAD COUNT</text>
+
+        <!-- Plot area: x 70-620, y 50-290 -->
+        <!-- Y-axis: 40 to 130 (range 90), 240px height. Each unit = 240/90 = 2.67px -->
+        <!-- y(v) = 290 - (v - 40) * 2.67 -->
+
+        <!-- Gridlines at 40, 60, 80, 100, 120 -->
+        <line x1="70" y1="290" x2="620" y2="290" class="chart-grid" />
+        <line x1="70" y1="237" x2="620" y2="237" class="chart-grid" />
+        <line x1="70" y1="183" x2="620" y2="183" class="chart-grid" />
+        <line x1="70" y1="130" x2="620" y2="130" class="chart-grid" />
+        <line x1="70" y1="77" x2="620" y2="77" class="chart-grid" />
+
+        <text x="62" y="294" text-anchor="end" class="chart-tick">40</text>
+        <text x="62" y="241" text-anchor="end" class="chart-tick">60</text>
+        <text x="62" y="187" text-anchor="end" class="chart-tick">80</text>
+        <text x="62" y="134" text-anchor="end" class="chart-tick">100</text>
+        <text x="62" y="81" text-anchor="end" class="chart-tick">120</text>
+
+        <!-- X positions: 1→70, 2→253, 4→437, 8→620 -->
+        <text x="70" y="310" text-anchor="middle" class="chart-tick">1</text>
+        <text x="253" y="310" text-anchor="middle" class="chart-tick">2</text>
+        <text x="437" y="310" text-anchor="middle" class="chart-tick">4</text>
+        <text x="620" y="310" text-anchor="middle" class="chart-tick">8</text>
+
+        <line x1="70" y1="290" x2="620" y2="290" class="chart-axis" />
+        <line x1="70" y1="50" x2="70" y2="290" class="chart-axis" />
+
+        <text x="345" y="335" text-anchor="middle" class="chart-axis-label">Number of Threads</text>
+        <text x="20" y="170" text-anchor="middle" class="chart-axis-label" transform="rotate(-90 20 170)">Total Work (s)</text>
+
+        <!-- Baseline (flat at 52.61): y = 290 - 12.61*2.67 = 290 - 33.7 = 256.3 -->
+        <line x1="70" y1="256.3" x2="620" y2="256.3" stroke="#8a9bb0" stroke-width="1.5" stroke-dasharray="6,4" />
+        <text x="615" y="251" text-anchor="end" class="chart-text" style="fill:#6a7d92;">No-interference baseline (52.61 s)</text>
+
+        <!-- omp-static: 1→52.61(256.3), 2→58(241.9), 4→84(172.5), 8→118(81.7) -->
+        <polyline points="70,256.3 253,241.9 437,172.5 620,81.7"
+                  fill="none" stroke="#0f3d9e" stroke-width="2.2" />
+        <circle cx="70" cy="256.3" r="4" fill="#0f3d9e" />
+        <circle cx="253" cy="241.9" r="4" fill="#0f3d9e" />
+        <circle cx="437" cy="172.5" r="4" fill="#0f3d9e" />
+        <circle cx="620" cy="81.7" r="4" fill="#0f3d9e" />
+        <text x="615" y="76" text-anchor="end" class="chart-text" style="fill:#0f3d9e; font-weight:600;">118 s</text>
+
+        <!-- omp-dynamic: 1→52.61(256.3), 2→60(236.6), 4→88(161.8), 8→121(73.7) -->
+        <polyline points="70,256.3 253,236.6 437,161.8 620,73.7"
+                  fill="none" stroke="#4a6fc4" stroke-width="2.2" stroke-dasharray="3,3" />
+        <circle cx="70" cy="256.3" r="4" fill="#4a6fc4" />
+        <circle cx="253" cy="236.6" r="4" fill="#4a6fc4" />
+        <circle cx="437" cy="161.8" r="4" fill="#4a6fc4" />
+        <circle cx="620" cy="73.7" r="4" fill="#4a6fc4" />
+
+        <!-- Annotation arrow -->
+        <path d="M 575 90 Q 535 130 510 200" stroke="#b8420a" stroke-width="1" fill="none" stroke-dasharray="2,2" />
+        <text x="500" y="215" class="chart-text" style="fill:#b8420a; font-weight:600;">2.24× inflation</text>
+
+        <g transform="translate(95, 60)">
+          <rect x="0" y="0" width="170" height="42" fill="white" stroke="#bdc8d8" stroke-width="0.8" />
+          <line x1="10" y1="14" x2="32" y2="14" stroke="#0f3d9e" stroke-width="2.2" />
+          <text x="38" y="17" class="legend-text">omp-static</text>
+          <line x1="10" y1="32" x2="32" y2="32" stroke="#4a6fc4" stroke-width="2.2" stroke-dasharray="3,3" />
+          <text x="38" y="35" class="legend-text">omp-dynamic</text>
+        </g>
+      </svg>
+      <figcaption><span class="fig-num">FIG 4.</span> If threads operated without interference, total work (sum of per-source times) would remain flat at 52.61 s. Instead it reaches 118 s at 8 threads — a <strong>2.24× inflation</strong> — directly evidencing cache and memory-bus contention between threads.</figcaption>
+    </figure>
+
+    <!-- FIGURE 5: Distribution of Per-Source Times -->
+    <figure>
+      <svg viewBox="0 0 700 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Distribution of Per-Source Execution Times">
+        <text x="350" y="22" text-anchor="middle" class="chart-axis-label" style="font-size: 12px;">DISTRIBUTION OF PER-SOURCE EXECUTION TIMES (SERIAL)</text>
+
+        <!-- Plot area: x 90-660, y 50-280 -->
+        <!-- Y-axis: 0 to 12000, 230px tall, scale = 230/12000 = 0.01917 -->
+        <!-- Gridlines at 0, 2k, 4k, 6k, 8k, 10k, 12k -->
+        <line x1="90" y1="50" x2="660" y2="50" class="chart-grid" />
+        <line x1="90" y1="88" x2="660" y2="88" class="chart-grid" />
+        <line x1="90" y1="127" x2="660" y2="127" class="chart-grid" />
+        <line x1="90" y1="165" x2="660" y2="165" class="chart-grid" />
+        <line x1="90" y1="203" x2="660" y2="203" class="chart-grid" />
+        <line x1="90" y1="242" x2="660" y2="242" class="chart-grid" />
+
+        <text x="82" y="284" text-anchor="end" class="chart-tick">0</text>
+        <text x="82" y="246" text-anchor="end" class="chart-tick">2k</text>
+        <text x="82" y="207" text-anchor="end" class="chart-tick">4k</text>
+        <text x="82" y="169" text-anchor="end" class="chart-tick">6k</text>
+        <text x="82" y="131" text-anchor="end" class="chart-tick">8k</text>
+        <text x="82" y="92" text-anchor="end" class="chart-tick">10k</text>
+        <text x="82" y="54" text-anchor="end" class="chart-tick">12k</text>
+
+        <line x1="90" y1="280" x2="660" y2="280" class="chart-axis" />
+        <line x1="90" y1="50" x2="90" y2="280" class="chart-axis" />
+
+        <text x="375" y="345" text-anchor="middle" class="chart-axis-label">Per-Source Time (ms)</text>
+        <text x="22" y="170" text-anchor="middle" class="chart-axis-label" transform="rotate(-90 22 170)">Number of Sources</text>
+
+        <!-- Bars: <0.1: 6, 2-3: 11669, 3-4: 7050, 4-5: 1, >5: 1 -->
+        <!-- Scale: y = 280 - val*0.01917 -->
+        <!-- 6→279.9, 11669→56.3, 7050→144.9, 1→279.98, 1→279.98 -->
+        <!-- 5 bars, width 90, x positions: 110, 222, 334, 446, 558 -->
+
+        <rect x="110" y="279.88" width="90" height="0.12" fill="#0f3d9e" />
+        <rect x="222" y="56.3" width="90" height="223.7" fill="#0f3d9e" />
+        <rect x="334" y="144.9" width="90" height="135.1" fill="#0f3d9e" />
+        <rect x="446" y="279.98" width="90" height="0.02" fill="#0f3d9e" />
+        <rect x="558" y="279.98" width="90" height="0.02" fill="#0f3d9e" />
+
+        <!-- Value labels above bars -->
+        <text x="155" y="275" text-anchor="middle" class="chart-text" style="font-weight:600; fill:#0f3d9e;">6</text>
+        <text x="267" y="49" text-anchor="middle" class="chart-text" style="font-weight:600; fill:#0f3d9e;">11,669</text>
+        <text x="379" y="138" text-anchor="middle" class="chart-text" style="font-weight:600; fill:#0f3d9e;">7,050</text>
+        <text x="491" y="275" text-anchor="middle" class="chart-text" style="font-weight:600; fill:#0f3d9e;">1</text>
+        <text x="603" y="275" text-anchor="middle" class="chart-text" style="font-weight:600; fill:#0f3d9e;">1</text>
+
+        <!-- Bin labels -->
+        <text x="155" y="298" text-anchor="middle" class="chart-tick">&lt;0.1</text>
+        <text x="267" y="298" text-anchor="middle" class="chart-tick">2–3</text>
+        <text x="379" y="298" text-anchor="middle" class="chart-tick">3–4</text>
+        <text x="491" y="298" text-anchor="middle" class="chart-tick">4–5</text>
+        <text x="603" y="298" text-anchor="middle" class="chart-tick">&gt;5</text>
+      </svg>
+      <figcaption><span class="fig-num">FIG 5.</span> Per-source times are tightly concentrated in the 2–4 ms band for the large connected component. The 255× min-to-max ratio is driven by 6 isolated nodes; the effective imbalance across the bulk of sources is narrow, which explains the limited benefit of dynamic scheduling.</figcaption>
+    </figure>
+
+    <!-- FIGURE 6: Top BC Proteins -->
+    <figure>
+      <svg viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top 8 Proteins by Betweenness Centrality">
+        <text x="350" y="22" text-anchor="middle" class="chart-axis-label" style="font-size: 12px;">TOP 8 PROTEINS BY BETWEENNESS CENTRALITY</text>
+
+        <!-- Plot area: x 110-660, y 50-330 -->
+        <!-- 8 horizontal bars, each ~26px tall, gap 8px -->
+        <!-- X-axis: 0 to 1100 (×10³), scale 550px wide / 1100 = 0.5 -->
+        <!-- Bar y positions (from bottom up): row N at y = 60 + N*34 -->
+        <!-- Rows from low to high (matching original): GRB2(0), SHMT1(1), HSPD1(2), CFLAR(3), CASP8(4), BIRC2(5), TSG101(6), BRCA1(7) -->
+        <!-- Reverse: BRCA1 at top -->
+
+        <!-- Gridlines at 200, 400, 600, 800, 1000 -->
+        <line x1="210" y1="50" x2="210" y2="330" class="chart-grid" />
+        <line x1="310" y1="50" x2="310" y2="330" class="chart-grid" />
+        <line x1="410" y1="50" x2="410" y2="330" class="chart-grid" />
+        <line x1="510" y1="50" x2="510" y2="330" class="chart-grid" />
+        <line x1="610" y1="50" x2="610" y2="330" class="chart-grid" />
+
+        <!-- X-axis ticks -->
+        <text x="110" y="350" text-anchor="middle" class="chart-tick">0</text>
+        <text x="210" y="350" text-anchor="middle" class="chart-tick">200</text>
+        <text x="310" y="350" text-anchor="middle" class="chart-tick">400</text>
+        <text x="410" y="350" text-anchor="middle" class="chart-tick">600</text>
+        <text x="510" y="350" text-anchor="middle" class="chart-tick">800</text>
+        <text x="610" y="350" text-anchor="middle" class="chart-tick">1000</text>
+
+        <line x1="110" y1="330" x2="660" y2="330" class="chart-axis" />
+        <line x1="110" y1="50" x2="110" y2="330" class="chart-axis" />
+
+        <text x="385" y="372" text-anchor="middle" class="chart-axis-label">Betweenness Centrality (×10³)</text>
+
+        <!-- Bars (top to bottom, descending centrality) -->
+        <!-- BRCA1 992: bar width = 992*0.5 = 496, x=110, y=60 -->
+        <!-- TSG101 987: 493.5, y=92 -->
+        <!-- BIRC2 928: 464, y=124 -->
+        <!-- CASP8 884: 442, y=156 -->
+        <!-- CFLAR 836: 418, y=188 -->
+        <!-- HSPD1 833: 416.5, y=220 -->
+        <!-- SHMT1 829: 414.5, y=252 -->
+        <!-- GRB2 808: 404, y=284 -->
+
+        <rect x="110" y="60" width="496" height="22" fill="#0f3d9e" />
+        <rect x="110" y="92" width="493.5" height="22" fill="#0f3d9e" />
+        <rect x="110" y="124" width="464" height="22" fill="#1d4eb0" />
+        <rect x="110" y="156" width="442" height="22" fill="#2c5dc1" />
+        <rect x="110" y="188" width="418" height="22" fill="#3b6cd2" />
+        <rect x="110" y="220" width="416.5" height="22" fill="#3b6cd2" />
+        <rect x="110" y="252" width="414.5" height="22" fill="#4a7be3" />
+        <rect x="110" y="284" width="404" height="22" fill="#4a7be3" />
+
+        <!-- Gene labels (left) -->
+        <text x="103" y="76" text-anchor="end" class="chart-text" style="font-weight:600;">BRCA1</text>
+        <text x="103" y="108" text-anchor="end" class="chart-text" style="font-weight:600;">TSG101</text>
+        <text x="103" y="140" text-anchor="end" class="chart-text" style="font-weight:600;">BIRC2</text>
+        <text x="103" y="172" text-anchor="end" class="chart-text" style="font-weight:600;">CASP8</text>
+        <text x="103" y="204" text-anchor="end" class="chart-text" style="font-weight:600;">CFLAR</text>
+        <text x="103" y="236" text-anchor="end" class="chart-text" style="font-weight:600;">HSPD1</text>
+        <text x="103" y="268" text-anchor="end" class="chart-text" style="font-weight:600;">SHMT1</text>
+        <text x="103" y="300" text-anchor="end" class="chart-text" style="font-weight:600;">GRB2</text>
+
+        <!-- Value labels (right of each bar) -->
+        <text x="612" y="76" class="chart-text" style="fill:#0f3d9e; font-weight:600;">992</text>
+        <text x="609" y="108" class="chart-text" style="fill:#0f3d9e; font-weight:600;">987</text>
+        <text x="580" y="140" class="chart-text" style="fill:#1d4eb0; font-weight:600;">928</text>
+        <text x="558" y="172" class="chart-text" style="fill:#2c5dc1; font-weight:600;">884</text>
+        <text x="534" y="204" class="chart-text" style="fill:#3b6cd2; font-weight:600;">836</text>
+        <text x="532" y="236" class="chart-text" style="fill:#3b6cd2; font-weight:600;">833</text>
+        <text x="530" y="268" class="chart-text" style="fill:#4a7be3; font-weight:600;">829</text>
+        <text x="520" y="300" class="chart-text" style="fill:#4a7be3; font-weight:600;">808</text>
+      </svg>
+      <figcaption><span class="fig-num">FIG 6.</span> BRCA1 and TSG101 rank highest, reflecting their roles as central hubs in the human PPI network with connections spanning many distinct biological pathways.</figcaption>
+    </figure>
+
+    <h3>3.1 Static vs. Dynamic Scheduling</h3>
+    <p>
+      Figure 1 shows static and dynamic scheduling performing nearly identically (3.57× vs. 3.48× at 8 threads). <strong>This is a meaningful result: despite the 255× spread in per-source times, dynamic scheduling offers no benefit.</strong> Figure 5 explains why. The apparent imbalance is almost entirely due to 6 isolated nodes; 99.97% of sources fall within the narrow 2–4 ms band of the large connected component. Under static scheduling these sources are distributed evenly across threads, producing minimal thread imbalance. Dynamic scheduling pays 18,727 atomic work-counter increments to solve an imbalance problem that does not materially exist, resulting in slightly worse performance than static.
+    </p>
+
+    <h3>3.2 Intra-BFS Parallelism is Counterproductive</h3>
+    <p>
+      Figure 3 shows the intra-BFS variant at 0.79× serial speed — <strong>a 26% slowdown</strong>. This is the most instructive failure of the project. The core difficulty is that the PPI graph's ≈6-level diameter means each parallel section contains only ~800 nodes per thread. Thread-launch and barrier overhead (5–20 µs per level) dominates the actual computation time, so threads spend more time synchronizing than computing.
+    </p>
+    <p>
+      Compounding this, the atomic adds to <code>delta[]</code> required for correctness — multiple nodes at depth ℓ+1 can share a predecessor at depth ℓ, creating write conflicts — serialize the hottest updates within each parallel section. The result is that intra-BFS parallelism on this graph pays synchronization costs twice: once at the level boundary via implicit barriers, and once within each level via atomic contention. Graphs with large diameter and wide frontiers would not suffer this problem, but the PPI graph's biological small-world structure makes this approach fundamentally unsuitable here.
+    </p>
+
+    <h3>3.3 Atomic Accumulation</h3>
+    <p>
+      The <code>omp-atomic</code> variant (3.61×) performs comparably to private-array static scheduling (3.57×). This near-tie occurs because the two approaches exchange one bottleneck for another of roughly equal cost: the private-array variant pays an O(nT) serial reduction phase after the parallel region, while the atomic variant pays contention on hub nodes during the backward pass. At n = 18,727 and T = 8, these costs approximately cancel. <strong>At larger n or denser graphs, hub contention would scale worse than the linear reduction</strong>, making the private-array approach strictly preferable.
+    </p>
+  </section>
+
+  <!-- ── BOTTLENECK ANALYSIS ── -->
+  <section id="bottleneck" class="card">
+    <div class="section-label">Diagnosis</div>
+    <h2>4 · Scaling Efficiency &amp; Bottleneck Analysis</h2>
+    <p>
+      The central finding of this project is that <strong>memory-bandwidth saturation, not load imbalance or synchronization, is the binding constraint on scaling.</strong> Figure 4 provides direct evidence: if threads operated without mutual interference, the sum of per-source times would remain flat at 52.61 s regardless of thread count. Instead, at 8 threads it reaches 118 s — a 2.24× inflation over serial. <strong>Each thread's work takes 2.24× longer simply because 8 threads are running simultaneously.</strong>
+    </p>
+    <p>
+      The culprit is the O(n) array reset that begins every source iteration. Each reset sweeps ≈750 KB of working arrays cold, before any BFS work has touched those cache lines. At 8 threads, eight simultaneous cold sweeps continuously evict each other's data from shared L3 cache, saturating the memory bus. The consequence is visible in Figure 2: parallel efficiency drops from 91% at 2 threads to 45% at 8 threads. <em>Each additional thread adds compute capacity but also adds to the collective memory pressure, and beyond 4 threads the pressure grows faster than the compute benefit.</em>
+    </p>
+    <p>
+      The lazy-reset optimization (Variants 5 and 6) directly targets this bottleneck. By deferring the reset to after accumulation and limiting it to visited nodes, threads reset only warm cache lines rather than sweeping cold memory. For the 2,113 isolated-node sources, the reset shrinks from O(18,727) to O(1); for connected sources the cache-warm effect reduces effective bandwidth regardless of visited count.
+    </p>
+    <p>
+      The observed speedup plateaus near 3.5× at 8 threads, well short of the ideal 8×. The primary cause is memory-bandwidth saturation — each thread must reset ≈750 KB of working arrays before every source iteration, and at 8 threads these concurrent cold sweeps saturate the shared memory bus and continuously evict each other's cache lines from L3. A secondary contributor is load imbalance: even though 99.97% of sources complete within the narrow 2–4 ms band, the few hub-adjacent sources that take significantly longer cause the slowest thread to finish after the others have idled, wasting available compute. <strong>Together, these two effects — memory contention growing super-linearly with thread count, and a long tail of heavy sources — cap practical speedup at roughly T/2 for this graph and problem size.</strong>
+    </p>
+  </section>
+
+  <!-- ── TOP BC NODES ── -->
+  <section id="bc-nodes" class="card">
+    <div class="section-label">Findings</div>
+    <h2>5 · Top Betweenness Centrality Nodes</h2>
+    <table class="data-table">
+      <thead>
+        <tr><th>Rank</th><th>Node ID</th><th>Entrez ID</th><th>Gene</th><th class="num" style="text-align:right;">BC Score</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono">1</td><td class="mono">238</td><td class="mono">672</td><td class="mono" style="color:var(--accent); font-weight:600;">BRCA1</td><td class="num">991,816</td></tr>
+        <tr><td class="mono">2</td><td class="mono">141</td><td class="mono">7182</td><td class="mono" style="color:var(--accent); font-weight:600;">TSG101</td><td class="num">986,648</td></tr>
+        <tr><td class="mono">3</td><td class="mono">236</td><td class="mono">330</td><td class="mono" style="color:var(--accent); font-weight:600;">BIRC2</td><td class="num">927,766</td></tr>
+        <tr><td class="mono">4</td><td class="mono">872</td><td class="mono">821</td><td class="mono" style="color:var(--accent); font-weight:600;">CASP8</td><td class="num">884,295</td></tr>
+        <tr><td class="mono">5</td><td class="mono">336</td><td class="mono">9531</td><td class="mono" style="color:var(--accent); font-weight:600;">CFLAR</td><td class="num">836,256</td></tr>
+        <tr><td class="mono">6</td><td class="mono">579</td><td class="mono">3329</td><td class="mono" style="color:var(--accent); font-weight:600;">HSPD1</td><td class="num">833,134</td></tr>
+        <tr><td class="mono">7</td><td class="mono">6</td><td class="mono">6472</td><td class="mono" style="color:var(--accent); font-weight:600;">SHMT1</td><td class="num">828,714</td></tr>
+        <tr><td class="mono">8</td><td class="mono">43</td><td class="mono">2885</td><td class="mono" style="color:var(--accent); font-weight:600;">GRB2</td><td class="num">807,849</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:1rem;">
+      BRCA1 and TSG101 ranking first is biologically meaningful: both are hub proteins with roles in DNA repair, cell signaling, and cancer pathways, connected to a large and diverse set of other proteins. <strong>These nodes serve as critical bridges between otherwise-distant parts of the network</strong> — precisely the condition that maximizes betweenness centrality — and their high degree is also what makes them the primary bottleneck for parallel accumulation, as all threads contend on their <code>bc[]</code> entries simultaneously.
+    </p>
+  </section>
+
+  <!-- ── MACHINE TARGET ── -->
+  <section id="machine" class="card">
+    <div class="section-label">Justification</div>
+    <h2>6 · Machine Target Assessment</h2>
+    <p>
+      A multicore CPU is the appropriate target for this problem. BFS on irregular adjacency lists causes severe warp divergence on GPUs due to non-uniform neighbor counts and unpredictable memory access patterns. The strict sequential dependencies within each source's backward pass are difficult to map to SIMD execution, and the high-precision double arithmetic required by BC scores exceeding 900,000 is better served by CPU floating-point units. <strong>A GPU would become competitive for graphs with millions of nodes</strong>, where wide BFS frontiers could fill warps efficiently and amortize launch overhead; for an 18,727-node graph with 6-level BFS the granularity is too small to benefit from GPU-scale parallelism.
+    </p>
+  </section>
+
+  <!-- ── REFERENCES ── -->
+  <section id="refs" class="card">
+    <div class="section-label">Citations</div>
+    <h2>References</h2>
+    <ol class="refs">
+      <li>U. Brandes. "A Faster Algorithm for Betweenness Centrality." <em>Journal of Mathematical Sociology</em>, 25(2):163–177, 2001.</li>
+      <li>BioGRID: Biological General Repository for Interaction Datasets. Homo sapiens dataset, version 5.0.256. <a href="https://thebiogrid.org/" target="_blank">https://thebiogrid.org/</a>, 2024.</li>
+      <li>D. Bader, S. Kintali, K. Madduri, and M. Mihail. "Approximating Betweenness Centrality." <em>Workshop on Algorithms and Models for the Web-Graph</em>, 2007.</li>
+      <li>A. McLaughlin and D. A. Bader. "Scalable and High Performance Betweenness Centrality on the GPU." <em>Proceedings of SC'14</em>, 2014.</li>
+      <li>OpenMP Architecture Review Board. <em>OpenMP Application Programming Interface</em>, Version 5.2, 2021. <a href="https://www.openmp.org/" target="_blank">https://www.openmp.org/</a></li>
+    </ol>
+  </section>
+
+  <!-- ── WORK DISTRIBUTION ── -->
+  <section id="work" class="card">
+    <div class="section-label">Contributions</div>
+    <h2>Work Distribution</h2>
+    <div class="work-grid">
+      <div class="work-card">
+        <div class="card-title">Tanishqa Puhan</div>
+        <ul>
+          <li>Corrections to finalize serial Brandes and profiling infrastructure implementation</li>
+          <li>OpenMP inter-source variants (static, dynamic, atomic)</li>
+          <li>Intra-BFS parallel variant and analysis</li>
+          <li>Lazy-reset optimizations (serial-opt, omp-opt)</li>
+          <li>Benchmark harness for performance experiments and final correctness-checking script</li>
+          <li>Performance analysis and report</li>
+        </ul>
+      </div>
+      <div class="work-card">
+        <div class="card-title">Vera Zhong</div>
+        <ul>
+          <li>BioGRID TAB3 graph parser and graph construction pipeline (filtering to physical human interactions, undirected edge deduplication, Entrez-ID remapping, adjacency-list construction, graph statistics, and validation)</li>
+          <li>Initial serial Brandes implementation and debugging on the constructed graph</li>
+          <li>Correctness validation using hand-written small graphs and NetworkX comparisons</li>
+          <li>BC output integration for correctness checking and downstream result reporting</li>
+          <li>Initial <code>std::chrono</code> timing and per-source profiling instrumentation for the serial baseline</li>
+          <li>Design and creation of the final project poster</li>
+          <li>Development of the project website for presenting proposal, milestone, and final results</li>
+        </ul>
+      </div>
+    </div>
+    <div class="work-split">
+      Credit distribution: &nbsp;<strong>50%</strong>&nbsp;/&nbsp;<strong>50%</strong>
+    </div>
+  </section>
+
+  <footer>
+    <span>15-418/618 · Spring 2026 · Carnegie Mellon University</span>
+    <span>Tanishqa Puhan &amp; Vera Zhong</span>
+  </footer>
+</div>
+
+<script>
+  const canvas = document.getElementById('ppi-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function buildAndDraw() {
+    const W = canvas.width = window.innerWidth;
+    const H = canvas.height = window.innerHeight;
+    const cx = W / 2, cy = H / 2;
+
+    function gauss() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+    }
+
+    const nodes = [];
+    const edges = [];
+    const adjSet = new Set();
+
+    function addEdge(a, b) {
+      if (a === b) return;
+      const key = Math.min(a,b) + ',' + Math.max(a,b);
+      if (adjSet.has(key)) return;
+      adjSet.add(key); edges.push([a, b]);
+      nodes[a].degree++; nodes[b].degree++;
+    }
+
+    const clusterR = Math.min(W, H) * 0.16;
+    const blobN = 160;
+    for (let i = 0; i < blobN; i++) {
+      nodes.push({ x: cx + gauss() * clusterR, y: cy + gauss() * clusterR * 0.9, degree: 0 });
+    }
+
+    for (let i = 1; i < blobN; i++) {
+      let best = -1, bestScore = Infinity;
+      for (let j = 0; j < i; j++) {
+        const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const score = dist / (nodes[j].degree + 1);
+        if (score < bestScore) { bestScore = score; best = j; }
+      }
+      addEdge(i, best);
+      for (let k = 0; k < 3; k++) {
+        if (Math.random() < 0.5) {
+          const j = Math.floor(Math.random() * i);
+          const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+          if (Math.sqrt(dx*dx+dy*dy) < clusterR * 1.2) addEdge(i, j);
+        }
+      }
+    }
+
+    const hubs = [...nodes]
+      .map((n, i) => ({i, deg: n.degree}))
+      .sort((a,b) => b.deg - a.deg)
+      .slice(0, 12);
+
+    for (const hub of hubs) {
+      const numArms = 1 + Math.floor(Math.random() * 2);
+      for (let arm = 0; arm < numArms; arm++) {
+        const angle = Math.random() * Math.PI * 2;
+        const armLen = 4 + Math.floor(Math.random() * 8);
+        let prevIdx = hub.i;
+        let px = nodes[hub.i].x, py = nodes[hub.i].y;
+        for (let k = 0; k < armLen; k++) {
+          const jitter = (Math.random() - 0.5) * 0.5;
+          const step = 18 + Math.random() * 10;
+          px += Math.cos(angle + jitter) * step;
+          py += Math.sin(angle + jitter) * step;
+          if (px < 30 || px > W-30 || py < 30 || py > H-30) break;
+          const idx = nodes.length;
+          nodes.push({ x: px, y: py, degree: 0 });
+          addEdge(prevIdx, idx);
+          prevIdx = idx;
+        }
+      }
+    }
+
+    const perimeterSlots = [
+      ...Array.from({length:6}, (_,i) => [W*0.08 + i*(W*0.16), H*0.06]),
+      ...Array.from({length:6}, (_,i) => [W*0.08 + i*(W*0.16), H*0.92]),
+      ...Array.from({length:4}, (_,i) => [W*0.04, H*0.15 + i*(H*0.22)]),
+      ...Array.from({length:4}, (_,i) => [W*0.94, H*0.15 + i*(H*0.22)]),
+    ];
+
+    for (const [ox, oy] of perimeterSlots) {
+      const dx = ox - cx, dy = oy - cy;
+      if (Math.sqrt(dx*dx+dy*dy) < clusterR * 1.8) continue;
+
+      const type = Math.random();
+      const startIdx = nodes.length;
+      if (type < 0.45) {
+        const len = 2 + Math.floor(Math.random() * 5);
+        const ang = Math.random() * Math.PI * 2;
+        for (let k = 0; k < len; k++) {
+          nodes.push({ x: ox + Math.cos(ang)*k*12 + (Math.random()-0.5)*4, y: oy + Math.sin(ang)*k*12 + (Math.random()-0.5)*4, degree: 0 });
+          if (k > 0) addEdge(startIdx+k-1, startIdx+k);
+        }
+      } else if (type < 0.75) {
+        const spokes = 2 + Math.floor(Math.random() * 4);
+        nodes.push({ x: ox, y: oy, degree: 0 });
+        for (let k = 0; k < spokes; k++) {
+          const a = (k/spokes)*Math.PI*2;
+          nodes.push({ x: ox+Math.cos(a)*13, y: oy+Math.sin(a)*13, degree: 0 });
+          addEdge(startIdx, startIdx+k+1);
+        }
+      } else {
+        nodes.push({ x: ox, y: oy, degree: 0 });
+        nodes.push({ x: ox+10, y: oy+(Math.random()-0.5)*6, degree: 0 });
+        addEdge(startIdx, startIdx+1);
+      }
+    }
+
+    const maxDeg = Math.max(...nodes.map(n => n.degree), 1);
+    for (const n of nodes) n.r = 1.3 + (n.degree / maxDeg) * 5.5;
+
+    ctx.clearRect(0, 0, W, H);
+
+    for (const [ai, bi] of edges) {
+      const a = nodes[ai], b = nodes[bi];
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = 'rgba(15,61,158,0.32)'; ctx.lineWidth = 0.8; ctx.stroke();
+    }
+
+    for (const n of nodes) {
+      const isHub = n.degree >= 8, isMed = n.degree >= 3;
+      if (isHub) {
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r+2.5, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(15,61,158,0.18)'; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+      ctx.fillStyle = isHub ? 'rgba(15,61,158,0.82)' : isMed ? 'rgba(15,61,158,0.62)' : 'rgba(15,61,158,0.42)';
+      ctx.fill();
+      if (isHub) { ctx.strokeStyle='rgba(15,61,158,0.95)'; ctx.lineWidth=0.8; ctx.stroke(); }
+    }
+  }
+
+  buildAndDraw();
+  window.addEventListener('resize', buildAndDraw);
+</script>
+</body>
+</html>
