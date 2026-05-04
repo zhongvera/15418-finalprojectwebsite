@@ -758,8 +758,8 @@ visited.push_back(w);  <span class="cm">// whenever a new node is discovered</sp
     </p>
 
     <h3>2.8 Variant 6 — Optimized Parallel with Lazy Reset</h3>
-    <div class="variant winner">
-      <div class="variant-tag">Variant 6 · final design</div>
+    <div class="variant">
+      <div class="variant-tag">Variant 6 · parallel optimization</div>
       <div class="variant-title">Inter-source static + lazy reset · per-thread visited[] tracking</div>
       <p>
         The final variant combines static inter-source parallelism (Variant 1) with lazy reset (Variant 5). Each thread maintains its own private <code>visited[]</code> vector alongside its other working arrays. <strong>This directly addresses the memory bandwidth saturation diagnosed in Variant 1</strong>: by reducing each thread's active working-set size, the combined footprint of 8 simultaneous threads is more likely to fit within the shared L3 cache, reducing the mutual eviction that inflates per-source time.
